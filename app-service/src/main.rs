@@ -8,15 +8,30 @@ use axum::{
     Json, Router,
 };
 use axum_extra::extract::CookieJar;
-use serde::Serialize;
+
 use tower_http::services::ServeDir;
+use serde::{Serialize,Deserialize};
+
+#[derive(Serialize, Deserialize)]
+struct Point{
+    x: f64,
+    y: f64,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Point2{
+    x: f64,
+    y: f64,
+}
+
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new()
-        .nest_service("/assets", ServeDir::new("assets"))
-        .route("/", get(root))
-        .route("/protected", get(protected));
+
+    let app = Router::new() // Create a new router
+        .nest_service("/assets", ServeDir::new("assets")) // Serve static files from the "assets" directory at the "/assets" path
+        .route("/", get(root)) // Define a GET route for the root path that uses the `root` handler
+        .route("/protected", get(protected)); // Define a GET route for the "/protected" path that uses the `protected` handler
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
