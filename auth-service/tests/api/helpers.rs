@@ -1,7 +1,7 @@
 use auth_service::Application;
 use paste::paste;
 use tokio::sync::OnceCell;
-
+use uuid::Uuid;
 macro_rules! post_test_functions {
     ($($name:ident),+ $(,)?) => {
         paste! {
@@ -25,6 +25,10 @@ pub async fn test_app() -> &'static TestApp {
         // Build and start your server once
         TestApp::new().await
     }).await
+}
+
+pub fn get_random_email() -> String {
+    format!("{}@example.com", Uuid::new_v4())
 }
 
 pub struct TestApp {
@@ -59,7 +63,19 @@ impl TestApp{
 
 
 
-    post_test_functions!(login, logout, signup, verify_2fa, verify_token);
+    post_test_functions!(login, logout, verify_2fa, verify_token);
 
+
+    pub async fn post_signup<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(&format!("{}/signup", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
 
 }
