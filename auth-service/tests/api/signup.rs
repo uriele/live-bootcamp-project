@@ -1,7 +1,9 @@
-use crate::helpers::test_app;
+//use crate::helpers::test_app;
 use crate::helpers::get_random_email;
+use crate::helpers::TestApp;
+
 #[tokio::test]
-async fn signup_return_auth_ui() { 
+async fn should_return_201_if_valid_input() {
 
     let random_email = get_random_email();
     let test_case =
@@ -11,7 +13,8 @@ async fn signup_return_auth_ui() {
             "requires2FA": true
         });
 
-    let app = test_app().await;
+    //let app = test_app().await;
+    let app = TestApp::new().await;
 
     let response = app.post_signup(&test_case).await;
     println!("signup:{}", response.status());
@@ -31,11 +34,12 @@ async fn signup_return_auth_ui() {
 
 
     assert_eq!(response.status().as_u16(), 201);
+    todo!()
 }
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input() {
-    let app = test_app().await;
+    let app = TestApp::new().await;
     let random_email = get_random_email();
 
     let test_cases = [
@@ -48,6 +52,12 @@ async fn should_return_422_if_malformed_input() {
             "email": "invalid-email",  // invalid email format
             "password": "short1234@",
             "requires2FA": false
+        }),
+        
+        serde_json::json!({
+            "email": "invalid-email",  // invalid email format
+            "password": "short1234@",
+            "requires2FA": "false"
         })
     ];
 

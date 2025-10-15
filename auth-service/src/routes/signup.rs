@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use axum::{Json};
+use axum::{response::IntoResponse, Json};
 
 //use crate::make_response_functions;
 //make_response_functions!(signup);
@@ -14,7 +14,7 @@ pub struct SignUp {
 
 
 
-pub async fn signup(Json(payload): Json<SignUp>)  -> axum::http::StatusCode {
+pub async fn signup(Json(payload): Json<SignUp>)  -> impl IntoResponse {
     // Your signup logic here
     let email = payload.email;
     let password = payload.password;
@@ -25,16 +25,16 @@ pub async fn signup(Json(payload): Json<SignUp>)  -> axum::http::StatusCode {
 
 
     if !email_regex.is_match(&email.as_str()).unwrap() {
-        return axum::http::StatusCode::UNPROCESSABLE_ENTITY;
+        return axum::http::StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
     //password at least 8 letters and a number and a symbol, no spaces
     if !password_regex.is_match(&password.as_str()).unwrap() {
-        return axum::http::StatusCode::UNPROCESSABLE_ENTITY;
+        return axum::http::StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
     // If all checks pass, create the user (placeholder)
     // create_user(email, password, requires_2fa).await;
 
-    axum::http::StatusCode::CREATED
+    axum::http::StatusCode::CREATED.into_response()
 }
