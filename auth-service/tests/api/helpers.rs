@@ -1,6 +1,6 @@
 use auth_service::Application;
 use paste::paste;
-use tokio::sync::OnceCell;
+// use tokio::sync::OnceCell;
 use uuid::Uuid;
 macro_rules! post_test_functions {
     ($($name:ident),+ $(,)?) => {
@@ -18,7 +18,7 @@ macro_rules! post_test_functions {
     }
 }
 
-
+/*
 static APP: OnceCell<TestApp> = OnceCell::const_new();
 pub async fn test_app() -> &'static TestApp {
     APP.get_or_init(|| async {
@@ -26,7 +26,7 @@ pub async fn test_app() -> &'static TestApp {
         TestApp::new().await
     }).await
 }
-
+*/
 pub fn get_random_email() -> String {
     format!("{}@example.com", Uuid::new_v4())
 }
@@ -38,7 +38,9 @@ pub struct TestApp {
 
 impl TestApp{
     pub async fn new() -> Self {
-        let app= Application::build("127.0.0.1:0")
+        let user_store = auth_service::services::HashmapUserStore::new();
+        let app_state = auth_service::app_state::AppState::new(user_store);
+        let app= Application::build(app_state,"127.0.0.1:0")
             .await
             .expect("Failed to build application");
 
