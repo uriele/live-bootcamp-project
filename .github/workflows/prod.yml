@@ -84,6 +84,13 @@ jobs:
     - name: Copy compose.yml to droplet
       run: sshpass -v -p '${{ secrets.DROPLET_PASSWORD }}' scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
 
+    - name: Install Docker (ubuntu)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        sudo usermod -aG docker $USER
+        newgrp docker || true
+
     - name: Deploy
       uses: appleboy/ssh-action@master
       with:
