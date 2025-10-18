@@ -59,7 +59,7 @@ impl Application {
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
             .route("/hello", get(hello_handler))
-            .route("/signup", post(signup))
+            .route("/signup", post(signup::<T>))
             .route("/login", post(login))
             .route("/logout", post(logout))
             .route("/verify-2fa", post(verify_2fa))

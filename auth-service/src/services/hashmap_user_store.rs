@@ -3,7 +3,7 @@ use crate::domain::*;
 
 #[derive(Default, Clone)]
 pub struct HashmapUserStore {
-    users: HashMap<String, User>,
+    users: HashMap<Email, User>,
 }
 
 
@@ -21,19 +21,16 @@ impl UserStore for HashmapUserStore {
         if self.users.contains_key(&user.email) {
             return Err(UserStoreError::UserAlreadyExists);
         }
-        let email  = &user.email.trim().to_string();
-        let password = &user.password.trim().to_string();
-
         let email_regex = fancy_regex::Regex::new(r"^[\w\.-]+@[\w\.-]+\.\w+$").unwrap();
         let password_regex = fancy_regex::Regex::new(r"^(?!.*\s)(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})").unwrap();
 
 
-        if !email_regex.is_match(&email.as_str()).unwrap() {
+        if !email_regex.is_match(&user.email.as_ref()).unwrap() {
             return Err(UserStoreError::InvalidCredentials);
         }
 
         //password at least 8 letters and a number and a symbol, no spaces
-        if !password_regex.is_match(&password.as_str()).unwrap() {
+        if !password_regex.is_match(&user.password.as_ref()).unwrap() {
             return Err(UserStoreError::InvalidCredentials);
         }
 
@@ -41,13 +38,9 @@ impl UserStore for HashmapUserStore {
             Ok(())
         }
 
-    async fn validate_credentials(&self, email: &str, password: &str) -> Result<bool, UserStoreError> {
+    async fn validate_credentials(&self, email: Email, password: Password) -> Result<bool, UserStoreError> {
 
-        // remove leading/trailing whitespace
-        let email = email.trim();
-        let password = password.trim();
-
-        match self.get_user(&email).await {
+        match self.get_user(email).await {
             Ok(user) => {
                 if user.password == password {
                     Ok(true)
@@ -60,9 +53,8 @@ impl UserStore for HashmapUserStore {
         
     }
 
-    async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
-        let email = email.trim();
-        self.users.get(email).cloned().ok_or(UserStoreError::UserNotFound)
+    async fn get_user(&self, email: Email) -> Result<User, UserStoreError> {
+        self.users.get(&email).cloned().ok_or(UserStoreError::UserNotFound)
     }
 
 }
@@ -74,9 +66,11 @@ mod tests {
     #[tokio::test]
     async fn test_add_user() {
         let mut hash: HashmapUserStore = HashmapUserStore::new();
+        let valid_user = Email::parse("test_user@example.com".to_string()).unwrap();
+        let valid_password = Password::parse("Password123!".to_string()).unwrap();
         let user = User::new_without_2fa(
-            "existing_user@example.com".into(),
-            "Password123!".into()
+            valid_user.clone(),
+            valid_password.clone()
         );
         let existing_user = user.clone();
 
@@ -90,35 +84,44 @@ mod tests {
     #[tokio::test]
     async fn test_get_user() {
         let mut hash = HashmapUserStore::new();
+        let valid_user = Email::parse("test_user@example.com".to_string()).unwrap();
+        let valid_password = Password::parse("Password123!".to_string()).unwrap();
         let user = User::new_without_2fa(
-            "test_user@example.com".into(),
-            "Password123!".into()
+            valid_user.clone(),
+            valid_password.clone()
         );
 
         hash.add_user(user.clone()).await.unwrap();
-        let retrieved_user = hash.get_user(" test_user@example.com").await;
+        let retrieved_user = hash.get_user(valid_user.clone()).await;
         assert_eq!(retrieved_user, Ok(user));
-        let non_existent_user = hash.get_user("non_existent_user@example.com").await;
+        let non_existent_user = hash.get_user(Email::parse("non_existent_user@example.com".to_string()).unwrap()).await;
         assert_eq!(non_existent_user, Err(UserStoreError::UserNotFound));
     }
 
     #[tokio::test]
     async fn test_validate_user() {
         let mut hash = HashmapUserStore::new();
+        let valid_user=Email::parse("test_user@example.com".to_string()).unwrap();
+        let valid_password=Password::parse("Password123!".to_string()).unwrap();
+        let invalid_user=Email::parse("invalid_user@example.com".to_string()).unwrap();
+        let invalid_password=Password::parse("Password321!".to_string()).unwrap();    
         let user = User::new_without_2fa(
-            "test_user@example.com".into(),
-            "Password123!".into()
+            valid_user.clone(),
+            valid_password.clone()
         );
 
         hash.add_user(user.clone()).await.unwrap();
 
-        let valid_credentials = hash.validate_credentials("test_user@example.com", "Password123!").await;
+        let valid_credentials = hash.validate_credentials(valid_user.clone(), valid_password.clone()).await;
         assert_eq!(valid_credentials, Ok(true));
 
-        let invalid_credentials = hash.validate_credentials("test_user@example.com", "WrongPassword!").await;
+        let invalid_credentials = hash.validate_credentials(valid_user.clone(),invalid_password.clone()).await;
         assert_eq!(invalid_credentials, Err(UserStoreError::InvalidCredentials));
 
-        let non_existent_user = hash.validate_credentials("non_existent_user@example.com", "Password123!").await;
+        let non_existent_user = hash.validate_credentials(
+            invalid_user.clone(),
+            valid_password.clone()
+        ).await;
         assert_eq!(non_existent_user, Err(UserStoreError::UserNotFound));
     }
 }

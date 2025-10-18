@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::domain::{UserStore, User, UserStoreError};
+use crate::domain::{UserStore, User, Email,Password, UserStoreError};
 
 // Option 1: Generics with Trait Bounds (Static Dispatch - More Efficient)
 #[derive(Clone)]
@@ -22,11 +22,11 @@ impl<T: UserStore + Send + Sync> UserStore for AppState<T> {
         self.user_store.write().await.add_user(user).await
     }
 
-    async fn validate_credentials(&self, email: &str, password: &str) -> Result<bool, UserStoreError> {
+    async fn validate_credentials(&self, email: Email, password: Password) -> Result<bool, UserStoreError> {
         self.user_store.read().await.validate_credentials(email, password).await
     }
 
-    async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
+    async fn get_user(&self, email: Email) -> Result<User, UserStoreError> {
         self.user_store.read().await.get_user(email).await
     }
 }

@@ -1,40 +1,42 @@
 use serde::{Serialize, Deserialize};
 use axum::{response::IntoResponse, Json,http::StatusCode, extract::State};
 
-use crate::{app_state::AppState, domain::{UserStoreError,AuthAPIErrors, User}};
+use crate::{app_state::AppState, domain::{UserStoreError,AuthAPIErrors, User, Email, Password}};
 
 //use crate::make_response_functions;
 //make_response_functions!(signup);
 
 #[derive(Serialize, Deserialize)]
 pub struct SignUp {
-    email: String,
-    password: String,
+    pub email: String,
+    pub password: String,
     #[serde(rename(deserialize="requires2FA"))]
-    requires_2fa: bool
+    pub requires_2fa: bool
 }
 
 
-
-pub async fn signup<T>(State(app_state): State<AppState<T>>, Json(payload): Json<SignUp>)-> impl IntoResponse 
+pub async fn signup<T>(State(app_state): State<AppState<T>>, Json(request): Json<SignUp>)-> impl IntoResponse 
 where T: crate::domain::UserStore + Send + Sync + 'static +Clone {
     // Your signup logic here
-    let email = payload.email;
-    let password = payload.password;
-    let requires_2fa = payload.requires_2fa;
+    let email = 
+        Email::parse(request.email)
+            .map_err(|_| AuthAPIErrors::InvalidCredentials.into_response());
 
-    let email_regex = fancy_regex::Regex::new(r"^[\w\.-]+@[\w\.-]+\.\w+$").unwrap();
-    let password_regex = fancy_regex::Regex::new(r"^(?!.*\s)(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})").unwrap();
+    let email = match email {
+        Err(e) => return e,
+        Ok(email) => email,
+    };
+    let password = 
+        Password::parse(request.password)
+            .map_err(|_| AuthAPIErrors::InvalidCredentials.into_response());
+    let password = match password {
+        Err(e) => return e,
+        Ok(password) => password,
+    };
+    let requires_2fa = request.requires_2fa;
 
 
-    if !email_regex.is_match(&email.as_str()).unwrap() {
-        return AuthAPIErrors::InvalidCredentials.into_response();
-    }
 
-    //password at least 8 letters and a number and a symbol, no spaces
-    if !password_regex.is_match(&password.as_str()).unwrap() {
-        return AuthAPIErrors::InvalidCredentials.into_response();
-    }
 
 
     let user = User::new(
@@ -50,7 +52,7 @@ where T: crate::domain::UserStore + Send + Sync + 'static +Clone {
     match returned_code {
         Ok(_) => {
             let response = Json(SignupResponse {
-                message: format!("User {} created successfully", email)
+                message: format!("User {} created successfully", email.as_ref())
             });
 
             // If all checks pass, create the user (placeholder)
