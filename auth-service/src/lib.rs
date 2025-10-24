@@ -26,6 +26,7 @@ impl IntoResponse for AuthAPIErrors {
     fn into_response(self) -> axum::response::Response {
         let (status, error_message) = match self {
             AuthAPIErrors::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
+            AuthAPIErrors::WrongEmailOrPassword => (StatusCode::UNAUTHORIZED, "Wrong email or password"),
             AuthAPIErrors::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
             AuthAPIErrors::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
             AuthAPIErrors::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
@@ -60,7 +61,7 @@ impl Application {
             .nest_service("/", ServeDir::new("assets"))
             .route("/hello", get(hello_handler))
             .route("/signup", post(signup::<T>))
-            .route("/login", post(login))
+            .route("/login", post(login::<T>))
             .route("/logout", post(logout))
             .route("/verify-2fa", post(verify_2fa))
             .route("/verify-token", post(verify_token))

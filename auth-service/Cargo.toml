@@ -19,7 +19,20 @@ fancy-regex = "0.11"
 async-trait = "0.1.78"
 validator = "0.16.1"
 
+axum-extra = {version = "0.9.2", features =["cookie"]}
+
+jsonwebtoken = "9.2.0"
+chrono = "0.4.35"
+
+# load variables from .env file
+dotenvy = "0.15.7"
+
+# provide a macro for declaring lazily evaluated statics in Rust
+lazy_static= "1.4.0"
+
+
 [dev-dependencies]
+reqwest = {version = "0.11.26",default-features= false, features = ["json","cookies"]}
 fake = "=2.3.0"
 quickcheck = "0.9.2"
 quickcheck_macros = "0.9.1"

@@ -1,4 +1,4 @@
-mod email;
+pub mod email;
 mod password;  
 mod user;
 mod error;

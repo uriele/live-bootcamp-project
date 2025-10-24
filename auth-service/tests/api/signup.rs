@@ -4,41 +4,6 @@ use crate::helpers::TestApp;
 use auth_service::routes::signup::SignupResponse;
 use auth_service::ErrorResponse;
 
-/* *
-#[tokio::test]
-async fn should_return_201_if_valid_input() {
-
-    let random_email = get_random_email();
-    let test_case =
-        serde_json::json!({
-            "email": random_email,
-            "password": "password123@",
-            "requires2FA": true
-        });
-
-    //let app = test_app().await;
-    let app = TestApp::new().await;
-
-    let response = app.post_signup(&test_case).await;
-    println!("signup:{}", response.status());
-    println!("email:{}", test_case["email"]);
-    println!("requires2FA:{}", test_case["requires2FA"]);
-    println!("password:{}", test_case["password"]);
-
-    
-
-    let email_regex = fancy_regex::Regex::new(r"^[\w\.-]+@[\w\.-]+\.\w+$").unwrap();
-    let password_regex = fancy_regex::Regex::new(r"^(?!.*\s)(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})").unwrap();
-
-    // Q: how do I transform a Value into a string
-        // A: use the to_string() method
-    println!("{}", email_regex.is_match(&test_case["email"].as_str().unwrap()).unwrap());
-    println!("{}", password_regex.is_match(&test_case["password"].as_str().unwrap()).unwrap());
-
-
-    assert_eq!(response.status().as_u16(), 201);
-}
-* */
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input() {

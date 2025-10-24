@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use axum_extra::extract::cookie;
+use reqwest::cookie::Jar;
 use auth_service::Application;
 use paste::paste;
 // use tokio::sync::OnceCell;
@@ -33,8 +37,12 @@ pub fn get_random_email() -> String {
 
 pub struct TestApp {
     pub address: String,
+    pub cookie_jar: Arc<Jar>,
     pub http_client: reqwest::Client,
 }
+
+
+
 
 impl TestApp{
     pub async fn new() -> Self {
@@ -49,9 +57,17 @@ impl TestApp{
         #[allow(clippy::let_underscore_future)]
         let _ = tokio::spawn(app.run());
 
-        let http_client = reqwest::Client::new();
+        let cookie_jar = Arc::new(Jar::default());
+        let http_client = reqwest::Client::builder()
+            .cookie_provider(cookie_jar.clone())
+            .build()
+            .unwrap();
 
-        return Self { address, http_client };
+        Self {
+            address,
+            cookie_jar,
+            http_client,
+        }
     }
 
     pub async fn get_root(&self) -> reqwest::Response {
@@ -65,7 +81,7 @@ impl TestApp{
 
 
 
-    post_test_functions!(login, logout, verify_2fa, verify_token);
+    post_test_functions!(logout, verify_2fa, verify_token);
 
 
     pub async fn post_signup<Body>(&self, body: &Body) -> reqwest::Response
@@ -78,6 +94,19 @@ impl TestApp{
             .send()
             .await
             .expect("Failed to execute request")
+    }
+
+    
+    pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(&format!("{}/login", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
     }
 
 }
