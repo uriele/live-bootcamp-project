@@ -4,4 +4,6 @@ pub enum AuthAPIErrors {
     UserAlreadyExists,
     UserNotFound,
     InternalServerError,
+    MissingToken,
+    InvalidToken,
 }

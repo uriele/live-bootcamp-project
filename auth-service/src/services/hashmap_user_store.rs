@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::domain::*;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct HashmapUserStore {
     users: HashMap<Email, User>,
 }

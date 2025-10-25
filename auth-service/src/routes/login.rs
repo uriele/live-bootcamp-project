@@ -2,16 +2,14 @@ use axum::{Json};
 use serde::{Serialize, Deserialize};
 use axum::{response::IntoResponse, http::StatusCode, extract::State};
 
-use crate::{app_state::AppState, domain::{AuthAPIErrors, Email, Password}, utils::auth};
+use crate::{app_state::AppState, domain::{AuthAPIErrors, Email, Password}};
 
 
-use axum_extra::extract::{cookie::Cookie, CookieJar};
+use axum_extra::extract::{CookieJar};
 
 
 use crate::{utils::auth::generate_auth_cookie};
 
-//use crate::make_response_functions;
-//make_response_functions!(login);
 
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct LoginRequest {
@@ -20,12 +18,12 @@ pub struct LoginRequest {
 }
 
 
-pub async fn login<T>(
-    State(app_state): State<AppState<T>>,
+pub async fn login(
+    State(app_state): State<AppState>,
     jar: CookieJar,
     Json(request): Json<LoginRequest>
 ) -> (CookieJar,Result<impl IntoResponse,AuthAPIErrors>) 
-where T: crate::domain::UserStore + Send + Sync + 'static +Clone {
+{
     // Your login logic here
     // For example, validate credentials, generate tokens, etc.
     let email = 

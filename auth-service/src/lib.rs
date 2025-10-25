@@ -4,19 +4,20 @@ use tokio::net::TcpListener;
 use std::error::Error;
 
 pub use axum::response::IntoResponse;
-pub use axum::http::StatusCode;
+pub use axum::http::{StatusCode,Method};
 
 pub mod utils;
 pub mod routes;
 pub mod domain;
 pub mod services;
 pub mod app_state;
-use routes::*;
 use app_state::AppState;
 use domain::AuthAPIErrors;
 use serde::{Serialize, Deserialize};
 
+use tower_http::{cors::CorsLayer};
 
+use utils::constants::YOUR_IP;
 #[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
     pub error: String,
@@ -30,6 +31,8 @@ impl IntoResponse for AuthAPIErrors {
             AuthAPIErrors::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
             AuthAPIErrors::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
             AuthAPIErrors::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
+            AuthAPIErrors::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
+            AuthAPIErrors::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token")
         };
 
         let body = Json(ErrorResponse {
@@ -51,21 +54,40 @@ pub struct Application {
 
 
 impl Application {
-    pub async fn build<T>(app_state: AppState<T>, address: &str) -> Result<Self, Box<dyn Error>> 
-    where T: domain::UserStore + Send + Sync + 'static + Clone
+    pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> 
     {
         // Move the Router definition from `main.rs` to here.
         // Also, remove the `hello` route.
         // We don't need it at this point!
+
+
+        let myip=format!("http://{}:8000",*YOUR_IP);
+
+
+        let allowed_origins = [
+            "http://localhost:8000".to_string().parse()?,
+            myip.parse()?,
+        ];
+
+
+        let cors = CorsLayer::new()
+            // Allow GET and POST requests
+            .allow_methods([Method::GET, Method::POST])
+            // Allow cookies to be included in requests
+            .allow_credentials(true)
+            .allow_origin(allowed_origins);
+
+
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
             .route("/hello", get(hello_handler))
-            .route("/signup", post(signup::<T>))
-            .route("/login", post(login::<T>))
-            .route("/logout", post(logout))
-            .route("/verify-2fa", post(verify_2fa))
-            .route("/verify-token", post(verify_token))
-            .with_state(app_state);
+            .route("/signup", post(routes::signup))
+            .route("/login", post(routes::login))
+            .route("/logout", post(routes::logout))
+            .route("/verify-2fa", post(routes::verify_2fa))
+            .route("/verify-token", post(routes::verify_token))
+            .with_state(app_state)
+            .layer(cors); // Add CORS config to our Axum router
 
         let listener = TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();

@@ -3,7 +3,7 @@ use crate::helpers::TestApp;
 //use auth_service::ErrorResponse;
 
 
-use auth_service::{routes::login::{self, LoginResponse}, utils::constants::JWT_COOKIE_NAME, ErrorResponse};
+use auth_service::{utils::constants::JWT_COOKIE_NAME};
 
 #[tokio::test]
 async fn should_return_200_if_valid_credentials_and_2fa_disabled() {

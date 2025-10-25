@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
-use axum_extra::extract::cookie;
 use reqwest::cookie::Jar;
 use auth_service::Application;
 use paste::paste;
+use tokio::sync::RwLock;
+use auth_service::services::HashmapUserStore;
+use auth_service::utils::constants::test;
 // use tokio::sync::OnceCell;
 use uuid::Uuid;
 macro_rules! post_test_functions {
@@ -46,9 +48,12 @@ pub struct TestApp {
 
 impl TestApp{
     pub async fn new() -> Self {
-        let user_store = auth_service::services::HashmapUserStore::new();
+
+        let user_store = Arc::new(RwLock::new(HashmapUserStore::default()));
+    
+    
         let app_state = auth_service::app_state::AppState::new(user_store);
-        let app= Application::build(app_state,"127.0.0.1:0")
+        let app= Application::build(app_state,test::APP_ADDRESS)
             .await
             .expect("Failed to build application");
 
@@ -81,7 +86,7 @@ impl TestApp{
 
 
 
-    post_test_functions!(logout, verify_2fa, verify_token);
+    post_test_functions!( verify_2fa, verify_token);
 
 
     pub async fn post_signup<Body>(&self, body: &Body) -> reqwest::Response
@@ -107,6 +112,14 @@ impl TestApp{
             .send()
             .await
             .expect("Failed to execute request.")
+    }
+
+    pub async fn post_logout(&self) -> reqwest::Response {
+        self.http_client
+            .post(&format!("{}/logout", &self.address))
+            .send()
+            .await
+            .expect("Failed to execute request")
     }
 
 }

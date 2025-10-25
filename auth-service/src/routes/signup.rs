@@ -3,10 +3,7 @@ use axum::{response::IntoResponse, Json,http::StatusCode, extract::State};
 
 use crate::{app_state::AppState, domain::{UserStoreError,AuthAPIErrors, User, Email, Password}};
 
-//use crate::make_response_functions;
-//make_response_functions!(signup);
-
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize,Debug)]
 pub struct SignUp {
     pub email: String,
     pub password: String,
@@ -15,9 +12,11 @@ pub struct SignUp {
 }
 
 
-pub async fn signup<T>(State(app_state): State<AppState<T>>, Json(request): Json<SignUp>)-> impl IntoResponse 
-where T: crate::domain::UserStore + Send + Sync + 'static +Clone {
+pub async fn signup(State(app_state): State<AppState>, Json(request): Json<SignUp>)-> impl IntoResponse 
+{
     // Your signup logic here
+
+    
     let email = 
         Email::parse(request.email)
             .map_err(|_| AuthAPIErrors::InvalidCredentials.into_response());

@@ -1,23 +1,21 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
 use crate::domain::{UserStore, User, Email,Password, UserStoreError};
-
-// Option 1: Generics with Trait Bounds (Static Dispatch - More Efficient)
+pub type UserStoreType = Arc<RwLock<dyn UserStore + Send + Sync >>;
 #[derive(Clone)]
-pub struct AppState<T> {
-    pub user_store: Arc<RwLock<T>>,
+pub struct AppState{
+    pub user_store: UserStoreType,
 }
 
-impl<T> AppState<T> {
-    pub fn new(user_store: T) -> Self {
-        let user_store = Arc::new(RwLock::new(user_store));
+impl AppState {
+    pub fn new(user_store: UserStoreType) -> Self {
+        let user_store = user_store;
         Self { user_store }
     }
 }
 
 #[async_trait::async_trait]
-impl<T: UserStore + Send + Sync> UserStore for AppState<T> {
+impl UserStore for AppState {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         self.user_store.write().await.add_user(user).await
     }

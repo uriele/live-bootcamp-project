@@ -59,26 +59,38 @@ pub fn generate_auth_token(email: &Email) -> Result<String, GenerateTokenError> 
 
 
 pub async fn validate_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-    decode::<Claims>(
+    let claim = decode::<Claims>(
         token,
         &DecodingKey::from_secret(JWT_SECRET.as_ref()),
         &Validation::default(),
-    ).map(|data| data.claims)   
+    ).map(|data| data.claims);
+
+    claim   
 }
 
 
 fn create_token(claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> {
-    encode(
+    let token = encode(
         &jsonwebtoken::Header::default(),
         &claims,
         &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-    )
+    ); 
+    token
+
 }
 
+
+// jsonwebtoken claims structure needs to be serializable and deserializable
+// and to include debug
 #[derive(Serialize, Deserialize,Debug)]
 pub struct Claims {
-    pub sub: String,
-    exp: usize,
+    pub sub: String,// Optional. Subject (whom token refers to)
+    //aud: String,         // Optional. Audience
+    exp: usize,  // // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
+    //iat: usize,          // Optional. Issued at (as UTC timestamp)
+    //iss: String,         // Optional. Issuer
+    //nbf: usize,          // Optional. Not Before (as UTC timestamp)
+    //sub: String,         // Optional. Subject (whom token refers to)
 }
 
 #[cfg(test)]
