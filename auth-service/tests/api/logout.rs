@@ -2,25 +2,8 @@ use auth_service::{utils::constants::JWT_COOKIE_NAME, ErrorResponse};
 use fake::Fake;
 use reqwest::Url;
 use crate::helpers::TestApp;
-use auth_service::domain::Email;
 use fake::faker::internet::en::FreeEmail;
-use auth_service::utils::auth::generate_auth_token;
-use std::ops::Deref;
-pub struct FakeJWT(String);
-
-impl FakeJWT{
-    pub fn parse(email:String) -> Self {
-        Self(generate_auth_token(&Email::parse(email).unwrap()).unwrap())    
-    }
-}
-
-impl Deref for FakeJWT {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+use crate::helpers::FakeJWT;
 
 
 #[tokio::test]

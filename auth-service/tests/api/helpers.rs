@@ -6,6 +6,10 @@ use paste::paste;
 use tokio::sync::RwLock;
 use auth_service::services::HashmapUserStore;
 use auth_service::utils::constants::test;
+use auth_service::utils::auth::generate_auth_token;
+use auth_service::domain::Email;
+use std::ops::Deref;
+
 // use tokio::sync::OnceCell;
 use uuid::Uuid;
 macro_rules! post_test_functions {
@@ -86,7 +90,7 @@ impl TestApp{
 
 
 
-    post_test_functions!( verify_2fa, verify_token);
+    post_test_functions!( verify_2fa);
 
 
     pub async fn post_signup<Body>(&self, body: &Body) -> reqwest::Response
@@ -122,4 +126,35 @@ impl TestApp{
             .expect("Failed to execute request")
     }
 
+    
+    pub async fn post_verify_token<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(format!("{}/verify-token", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+}
+
+
+// A fake JWT struct for testing purposes
+pub struct FakeJWT(String);
+
+impl FakeJWT{
+    pub fn parse(email:String) -> Self {
+        Self(generate_auth_token(&Email::parse(email).unwrap()).unwrap())    
+    }
+}
+
+impl Deref for FakeJWT {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
