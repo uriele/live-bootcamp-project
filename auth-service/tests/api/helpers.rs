@@ -3,6 +3,7 @@ use std::sync::Arc;
 use reqwest::cookie::Jar;
 use auth_service::Application;
 use paste::paste;
+use serde::{Serialize, Deserialize};
 use tokio::sync::RwLock;
 use auth_service::services::HashmapUserStore;
 use auth_service::utils::constants::test;
@@ -126,7 +127,7 @@ impl TestApp{
             .expect("Failed to execute request")
     }
 
-    
+
     pub async fn post_verify_token<Body>(&self, body: &Body) -> reqwest::Response
     where
         Body: serde::Serialize,
@@ -143,6 +144,7 @@ impl TestApp{
 
 
 // A fake JWT struct for testing purposes
+#[derive(Debug, Clone,Serialize, Deserialize)]
 pub struct FakeJWT(String);
 
 impl FakeJWT{

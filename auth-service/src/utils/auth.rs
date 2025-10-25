@@ -7,7 +7,8 @@ use jsonwebtoken::{encode,decode,DecodingKey,EncodingKey,Validation};
 use serde::{Serialize,Deserialize};
 
 use crate::domain::email::Email;
-
+use crate::domain::AuthAPIErrors;
+use axum_extra::extract::CookieJar;
 
 pub fn generate_auth_cookie(email: &Email) -> Result<Cookie<'static>, GenerateTokenError> {
     let token = generate_auth_token(email)?;
@@ -78,6 +79,28 @@ fn create_token(claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> 
     token
 
 }
+
+
+pub async fn check_for_token_validity(jar: &CookieJar) -> Result<(), AuthAPIErrors> {
+    let cookie = jar.get(JWT_COOKIE_NAME);
+
+    // return AuthAPIErrors::MissingToken if cookie is not found
+    let cookie = match cookie {
+        Some(cookie) => cookie,
+        None => return Err(AuthAPIErrors::MissingToken),
+    };
+
+    let token = cookie.clone().value().to_owned();
+
+
+    // only return AuthAPIErrors::InvalidToken if token is invalid
+    match validate_token(&token).await {
+        Err(_) => return Err(AuthAPIErrors::InvalidToken),
+        _ => (),   
+    }
+    Ok(())
+}
+
 
 
 // jsonwebtoken claims structure needs to be serializable and deserializable
