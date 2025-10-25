@@ -34,6 +34,8 @@ jobs:
     - name: Build and test app-service code
       working-directory: ./app-service
       run: |
+        export JWT_SECRET=secret
+        export YOUR_IP=localhost
         cargo build --verbose
         cargo test --verbose
 
@@ -103,7 +105,10 @@ jobs:
             apt-get update
             apt-get install -y docker-compose-plugin
           fi
+          
           cd ~
+          export JWT_SECRET=${{ secrets.JWT_SECRET }}
+          export YOUR_IP=${{ vars.YOUR_IP }}
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
           docker compose down
           docker compose pull

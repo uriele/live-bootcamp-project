@@ -14,5 +14,8 @@ services:
     # TODO: change "letsgetrusty" to your Docker Hub username
     image: cemlab/auth-service
     restart: "always" # automatically restart container when server crashes
+    environment: # set up environment variables
+      JWT_SECRET: ${JWT_SECRET} #
+      YOUR_IP: ${YOUR_IP} # set YOUR_IP to your droplet's public IP address
     ports:
       - "3000:3000" # expose port 3000 so that applications outside the container can connect to it 
