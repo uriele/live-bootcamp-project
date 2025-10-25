@@ -30,6 +30,7 @@ dotenvy = "0.15.7"
 # provide a macro for declaring lazily evaluated statics in Rust
 lazy_static= "1.4.0"
 
+rand="0.8.5"
 
 [dev-dependencies]
 reqwest = {version = "0.11.26",default-features= false, features = ["json","cookies"]}

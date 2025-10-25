@@ -1,20 +1,9 @@
 
-use super::{User,Email,Password};
+
 mod banned_token_store;
+mod user_store;
+mod two_fa_store;
 
-pub use banned_token_store::{BannedTokenStore,BannedTokenStoreError};
-
-#[async_trait::async_trait]
-pub trait UserStore {
-    async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>;
-    async fn validate_credentials(&self, email: Email, password: Password) -> Result<bool, UserStoreError>;
-    async fn get_user(&self, email: Email) -> Result<User, UserStoreError>;
-}
-
-#[derive(Debug, PartialEq)]
-pub enum UserStoreError {
-    UserAlreadyExists,
-    UserNotFound,
-    InvalidCredentials,
-    UnexpectedError,
-}
+pub use banned_token_store::*;
+pub use user_store::*;
+pub use two_fa_store::*;
