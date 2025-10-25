@@ -81,4 +81,8 @@ impl Default for TwoFACode {
     }
 }
 
-// TODO: Implement AsRef<str> for TwoFACode
+impl AsRef<str> for TwoFACode {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}

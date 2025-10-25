@@ -5,34 +5,18 @@ use auth_service::Application;
 //use paste::paste;
 use serde::{Serialize, Deserialize};
 use tokio::sync::RwLock;
-use auth_service::app_state::{BannedTokenStoreType,TwoFACodeStoreType,UserStoreType};
+use auth_service::app_state::{BannedTokenStoreType,TwoFACodeStoreType,UserStoreType, EmailClientType};
 use auth_service::services::{HashmapUserStore,HashsetBannedTokenStore,HashmapTwoFACodeStore};
 use auth_service::utils::constants::test;
 use auth_service::utils::auth::generate_auth_token;
 use auth_service::domain::Email;
 use std::ops::Deref;
 
+use auth_service::services::MockEmailClient;
+use auth_service::app_state::AppState;
 // use tokio::sync::OnceCell;
 use uuid::Uuid;
 
-
-/*
-macro_rules! post_test_functions {
-    ($($name:ident),+ $(,)?) => {
-        paste! {
-            $(
-                pub async fn [<post_ $name>](&self) -> reqwest::Response {
-                    self.http_client
-                        .post(&format!("{}/{}", &self.address, stringify!($name)).replace("_", "-"))
-                        .send()
-                        .await
-                        .expect("Failed to execute request")
-                }
-            )*
-        }
-    }
-}
-*/
 pub fn get_random_email() -> String {
     format!("{}@example.com", Uuid::new_v4())
 }
@@ -43,6 +27,7 @@ pub struct TestApp {
     pub banned_token_store: BannedTokenStoreType,
     pub two_fa_code_store: TwoFACodeStoreType,
     pub user_store: UserStoreType,
+    pub email_client: EmailClientType,
     pub http_client: reqwest::Client,
 }
 
@@ -55,8 +40,9 @@ impl TestApp{
         let user_store = Arc::new(RwLock::new(HashmapUserStore::default()));
         let banned_token_store = Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
         let two_fa_code_store = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
+        let email_client = Arc::new(RwLock::new(MockEmailClient));
 
-        let app_state = auth_service::app_state::AppState::new(user_store.clone(), banned_token_store.clone(), two_fa_code_store.clone());
+        let app_state = AppState::new(user_store.clone(), banned_token_store.clone(), two_fa_code_store.clone(), email_client.clone());
         let app= Application::build(app_state,test::APP_ADDRESS)
             .await
             .expect("Failed to build application");
@@ -78,6 +64,7 @@ impl TestApp{
             banned_token_store,
             two_fa_code_store,
             user_store,
+            email_client,
             http_client,
         }
     }

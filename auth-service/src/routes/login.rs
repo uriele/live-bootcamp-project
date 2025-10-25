@@ -73,8 +73,22 @@ async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (C
         .add_code(
             email.clone(),
             login_attempt_id.clone(),
-            two_fa_code
+            two_fa_code.clone()
         ).await {
+        Ok(_) => (),
+        Err(_) => return (jar, Err(AuthAPIErrors::InternalServerError)),
+    };
+
+
+
+    // TODO: send 2FA code via the email client. Return `AuthAPIError::UnexpectedError` if the operation fails.
+    match state.email_client.read()
+        .await
+        .send_email(email, 
+        login_attempt_id.as_ref(),
+        two_fa_code.as_ref()
+        )
+        .await {
         Ok(_) => (),
         Err(_) => return (jar, Err(AuthAPIErrors::InternalServerError)),
     };
