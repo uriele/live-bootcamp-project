@@ -89,3 +89,29 @@ async fn should_return_422_if_malformed_input() {
         assert_eq!(response.status().as_u16(), 422);
     }
 }
+
+
+#[tokio::test]
+async fn should_return_401_if_banned_token() {
+    let app = TestApp::new().await;
+
+    let fake_jwt = FakeJWT::parse(FreeEmail().fake());
+
+    // Ban the token
+    {
+
+        let fake_jwt = fake_jwt.to_string();
+        let mut banned_token_store = app.banned_token_store.write().await;
+        banned_token_store
+            .ban_token(fake_jwt)
+            .await
+            .expect("Failed to ban token");
+    }
+
+    let request_body = serde_json::json!({
+        "token": fake_jwt,
+    });
+    let response = app.post_verify_token(&request_body).await;
+    assert_eq!(response.status().as_u16(), 401);
+
+}

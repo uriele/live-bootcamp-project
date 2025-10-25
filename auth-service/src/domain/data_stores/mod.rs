@@ -1,6 +1,8 @@
 
 use super::{User,Email,Password};
+mod banned_token_store;
 
+pub use banned_token_store::{BannedTokenStore,BannedTokenStoreError};
 
 #[async_trait::async_trait]
 pub trait UserStore {

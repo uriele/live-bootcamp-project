@@ -13,6 +13,7 @@ pub mod services;
 pub mod app_state;
 use app_state::AppState;
 use domain::AuthAPIErrors;
+use domain::BannedTokenStoreError;
 use serde::{Serialize, Deserialize};
 
 use tower_http::{cors::CorsLayer};
@@ -44,6 +45,20 @@ impl IntoResponse for AuthAPIErrors {
 }   
 
 
+
+impl IntoResponse for BannedTokenStoreError {
+    fn into_response(self) -> axum::response::Response {
+        let (status, error_message) = match self {
+            BannedTokenStoreError::UnexpectedError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
+        };
+
+        let body = Json(ErrorResponse {
+            error: error_message.to_string(),
+        });
+
+        (status, body).into_response()
+    }
+}
 
 
 pub struct Application {
@@ -95,7 +110,7 @@ impl Application {
 
         // Create a new Application instance and return it
         //todo!()
-        Ok(Self { server, address })
+        Ok(Application { server, address })
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {

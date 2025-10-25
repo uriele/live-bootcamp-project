@@ -1,7 +1,7 @@
 use axum_extra::extract::cookie::{Cookie,SameSite};
 use chrono::{Utc}; 
 use super::constants::{JWT_COOKIE_NAME, JWT_SECRET};
-
+use crate::app_state::AppState;
 use jsonwebtoken::{encode,decode,DecodingKey,EncodingKey,Validation};
 
 use serde::{Serialize,Deserialize};
@@ -81,7 +81,7 @@ fn create_token(claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> 
 }
 
 
-pub async fn check_for_token_validity(jar: &CookieJar) -> Result<(), AuthAPIErrors> {
+pub async fn check_for_token_validity(state: AppState, jar: &CookieJar) -> Result<(), AuthAPIErrors> {
     let cookie = jar.get(JWT_COOKIE_NAME);
 
     // return AuthAPIErrors::MissingToken if cookie is not found
@@ -94,10 +94,14 @@ pub async fn check_for_token_validity(jar: &CookieJar) -> Result<(), AuthAPIErro
 
 
     // only return AuthAPIErrors::InvalidToken if token is invalid
-    match validate_token(&token).await {
-        Err(_) => return Err(AuthAPIErrors::InvalidToken),
-        _ => (),   
-    }
+    validate_token(&token).await.map_err(|_| AuthAPIErrors::InvalidToken)?;
+
+    state 
+        .banned_token_store
+        .write()
+        .await
+        .ban_token(token)
+        .await.map_err(|_| AuthAPIErrors::InternalServerError)?;
     Ok(())
 }
 

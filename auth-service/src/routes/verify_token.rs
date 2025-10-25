@@ -11,8 +11,17 @@ use crate::{
 };
 
 
-pub async fn verify_token(State(_state): State<AppState>,
+pub async fn verify_token(State(state): State<AppState>,
     Json(request): Json<VerifyTokenRequest>) -> Result<impl IntoResponse, AuthAPIErrors> {
+        
+    match state.banned_token_store.read().await.is_token_banned(&request).await {
+        Ok(val) => {
+            if val {
+                return Err(AuthAPIErrors::InvalidToken);
+            }
+        },
+        Err(_) => return Err(AuthAPIErrors::InternalServerError),
+    }
 
     match validate_token(&request).await {
         Err(_) =>  Err(AuthAPIErrors::InvalidToken),
