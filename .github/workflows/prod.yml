@@ -35,6 +35,7 @@ jobs:
     - name: Build and test app-service code
       working-directory: ./app-service
       run: |
+        export JWT_SECRET=${{secrets.JWT_SECRET}}
         cargo build --verbose
         cargo test --verbose
 
