@@ -43,6 +43,7 @@ jobs:
       working-directory: ./auth-service
       run: |
         export JWT_SECRET=secret
+        export YOUR_IP=localhost
         cargo build --verbose
         cargo test --verbose
 
@@ -113,4 +114,5 @@ jobs:
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
           docker compose down
           docker compose pull
+
           docker compose up -d
