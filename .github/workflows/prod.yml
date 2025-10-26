@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
@@ -29,21 +28,20 @@ jobs:
         restore-keys: ${{ runner.os }}-cargo-
 
     - name: Install Rust
-      run: rustup update stable && rustup default stable
-
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
     - name: Build and test app-service code
       working-directory: ./app-service
       run: |
-        export JWT_SECRET=secret
-        export YOUR_IP=localhost
         cargo build --verbose
         cargo test --verbose
 
     - name: Build and test auth-service code
       working-directory: ./auth-service
       run: |
-        export JWT_SECRET=secret
-        export YOUR_IP=localhost
+        export JWT_SECRET=${{secrets.JWT_SECRET}}
         cargo build --verbose
         cargo test --verbose
 
@@ -86,7 +84,7 @@ jobs:
       run: sudo apt-get install sshpass
 
     - name: Copy compose.yml to droplet
-      run: sshpass -v -p '${{ secrets.DROPLET_PASSWORD }}' scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
+      run: sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
 
     - name: Deploy
       uses: appleboy/ssh-action@master
@@ -110,9 +108,7 @@ jobs:
           
           cd ~
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
-          export YOUR_IP=${{ vars.YOUR_IP }}
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
-          docker compose down
-          docker compose pull
-
-          docker compose up -d
+          docker-compose down
+          docker-compose pull
+          docker-compose up -d
