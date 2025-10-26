@@ -1,10 +1,10 @@
 use serde::{Serialize, Deserialize};
 use axum::{response::IntoResponse, Json,http::StatusCode, extract::State};
 
-use crate::{app_state::AppState, domain::{UserStoreError,AuthAPIErrors, User, Email, Password}};
+use crate::{app_state::AppState, domain::{UserStoreError,AuthAPIError, User, Email, Password}};
 
 #[derive(Serialize, Deserialize,Debug)]
-pub struct SignUp {
+pub struct SignupRequest {
     pub email: String,
     pub password: String,
     #[serde(rename(deserialize="requires2FA"))]
@@ -12,14 +12,14 @@ pub struct SignUp {
 }
 
 
-pub async fn signup(State(app_state): State<AppState>, Json(request): Json<SignUp>)-> impl IntoResponse 
+pub async fn signup(State(app_state): State<AppState>, Json(request): Json<SignupRequest>)-> impl IntoResponse 
 {
     // Your signup logic here
 
     
     let email = 
         Email::parse(request.email)
-            .map_err(|_| AuthAPIErrors::InvalidCredentials.into_response());
+            .map_err(|_| AuthAPIError::InvalidCredentials.into_response());
 
     let email = match email {
         Err(e) => return e,
@@ -27,7 +27,7 @@ pub async fn signup(State(app_state): State<AppState>, Json(request): Json<SignU
     };
     let password = 
         Password::parse(request.password)
-            .map_err(|_| AuthAPIErrors::InvalidCredentials.into_response());
+            .map_err(|_| AuthAPIError::InvalidCredentials.into_response());
     let password = match password {
         Err(e) => return e,
         Ok(password) => password,
@@ -60,9 +60,9 @@ pub async fn signup(State(app_state): State<AppState>, Json(request): Json<SignU
             return (StatusCode::CREATED,response).into_response()  
         },
         Err(e) => match e {
-            UserStoreError::UserAlreadyExists => return AuthAPIErrors::UserAlreadyExists.into_response(),
-            UserStoreError::InvalidCredentials => return AuthAPIErrors::InvalidCredentials.into_response(),
-            _ => return AuthAPIErrors::InternalServerError.into_response(),
+            UserStoreError::UserAlreadyExists => return AuthAPIError::UserAlreadyExists.into_response(),
+            UserStoreError::InvalidCredentials => return AuthAPIError::InvalidCredentials.into_response(),
+            _ => return AuthAPIError::InternalServerError.into_response(),
             }
     }
 

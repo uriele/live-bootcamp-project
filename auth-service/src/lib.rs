@@ -12,8 +12,7 @@ pub mod domain;
 pub mod services;
 pub mod app_state;
 use app_state::AppState;
-use domain::AuthAPIErrors;
-use domain::BannedTokenStoreError;
+use domain::{AuthAPIError,BannedTokenStoreError,TwoFACodeStoreError};
 use serde::{Serialize, Deserialize};
 
 use tower_http::{cors::CorsLayer};
@@ -24,16 +23,16 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-impl IntoResponse for AuthAPIErrors {
+impl IntoResponse for AuthAPIError {
     fn into_response(self) -> axum::response::Response {
         let (status, error_message) = match self {
-            AuthAPIErrors::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
-            AuthAPIErrors::WrongEmailOrPassword => (StatusCode::UNAUTHORIZED, "Wrong email or password"),
-            AuthAPIErrors::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
-            AuthAPIErrors::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
-            AuthAPIErrors::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
-            AuthAPIErrors::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
-            AuthAPIErrors::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token")
+            AuthAPIError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
+            AuthAPIError::WrongEmailOrPassword => (StatusCode::UNAUTHORIZED, "Wrong email or password"),
+            AuthAPIError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
+            AuthAPIError::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
+            AuthAPIError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
+            AuthAPIError::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
+            AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token")
         };
 
         let body = Json(ErrorResponse {
@@ -44,7 +43,20 @@ impl IntoResponse for AuthAPIErrors {
     }
 }   
 
+impl IntoResponse for TwoFACodeStoreError{
+    fn into_response(self) -> axum::response::Response{
+        let (status, error_message) = match self {
+            TwoFACodeStoreError::LoginAttemptIdNotFound => (StatusCode::UNAUTHORIZED, "Login attempt ID not found"),
+            TwoFACodeStoreError::UnexpectedError => (StatusCode::BAD_REQUEST, "Unexpected Error"),
+        };
 
+        let body = Json(ErrorResponse {
+            error: error_message.to_string(),
+        });
+
+        (status, body).into_response()  
+    }
+}
 
 impl IntoResponse for BannedTokenStoreError {
     fn into_response(self) -> axum::response::Response {

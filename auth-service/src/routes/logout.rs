@@ -6,12 +6,12 @@ use axum::extract::State;
 
 use crate::{
     app_state::AppState,
-    domain::AuthAPIErrors,
+    domain::AuthAPIError,
     utils::{auth::check_for_token_validity, constants::JWT_COOKIE_NAME}
 };
 
 pub async fn logout(State(state): State<AppState>,
-    jar: CookieJar) -> (CookieJar, Result<impl IntoResponse, AuthAPIErrors>) {
+    jar: CookieJar) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
     // retrieve JWT cookie from CookieJar 
 
     match check_for_token_validity(state,&jar).await {

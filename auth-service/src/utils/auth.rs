@@ -7,7 +7,7 @@ use jsonwebtoken::{encode,decode,DecodingKey,EncodingKey,Validation};
 use serde::{Serialize,Deserialize};
 
 use crate::domain::email::Email;
-use crate::domain::AuthAPIErrors;
+use crate::domain::AuthAPIError;
 use axum_extra::extract::CookieJar;
 
 pub fn generate_auth_cookie(email: &Email) -> Result<Cookie<'static>, GenerateTokenError> {
@@ -81,27 +81,27 @@ fn create_token(claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> 
 }
 
 
-pub async fn check_for_token_validity(state: AppState, jar: &CookieJar) -> Result<(), AuthAPIErrors> {
+pub async fn check_for_token_validity(state: AppState, jar: &CookieJar) -> Result<(), AuthAPIError> {
     let cookie = jar.get(JWT_COOKIE_NAME);
 
-    // return AuthAPIErrors::MissingToken if cookie is not found
+    // return AuthAPIError::MissingToken if cookie is not found
     let cookie = match cookie {
         Some(cookie) => cookie,
-        None => return Err(AuthAPIErrors::MissingToken),
+        None => return Err(AuthAPIError::MissingToken),
     };
 
     let token = cookie.clone().value().to_owned();
 
 
-    // only return AuthAPIErrors::InvalidToken if token is invalid
-    validate_token(&token).await.map_err(|_| AuthAPIErrors::InvalidToken)?;
+    // only return AuthAPIError::InvalidToken if token is invalid
+    validate_token(&token).await.map_err(|_| AuthAPIError::InvalidToken)?;
 
     state 
         .banned_token_store
         .write()
         .await
         .ban_token(token)
-        .await.map_err(|_| AuthAPIErrors::InternalServerError)?;
+        .await.map_err(|_| AuthAPIError::InternalServerError)?;
     Ok(())
 }
 

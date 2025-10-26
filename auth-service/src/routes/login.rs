@@ -2,7 +2,7 @@ use axum::{Json};
 use serde::{Serialize, Deserialize};
 use axum::{response::IntoResponse, http::StatusCode, extract::State};
 
-use crate::{app_state::AppState, domain::{AuthAPIErrors, Email, Password}};
+use crate::{app_state::AppState, domain::{AuthAPIError, Email, Password}};
 
 use crate::domain::data_stores::{LoginAttemptId,TwoFACode};
 use axum_extra::extract::{CookieJar};
@@ -22,7 +22,7 @@ pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
-) -> (CookieJar, Result<impl IntoResponse, AuthAPIErrors>)
+) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>)
 {
     // Your login logic here
     // For example, validate credentials, generate tokens, etc.
@@ -31,30 +31,30 @@ pub async fn login(
 
     let email = match email {
         Ok(email) => email,
-        _ => return (jar, Err(AuthAPIErrors::InvalidCredentials)),
+        _ => return (jar, Err(AuthAPIError::InvalidCredentials)),
     };
 
     let password = 
         Password::parse(request.password);
     let password = match password {
         Ok(password) => password,
-        _ => return (jar, Err(AuthAPIErrors::InvalidCredentials)),
+        _ => return (jar, Err(AuthAPIError::InvalidCredentials)),
     };
 
     // Placeholder logic for user authentication
     let user_store = state.user_store.read().await;
     let user = match user_store.get_user(email.clone()).await{
         Ok(user) => user,
-        _ => return (jar, Err(AuthAPIErrors::WrongEmailOrPassword)),
+        _ => return (jar, Err(AuthAPIError::WrongEmailOrPassword)),
     };
 
     let is_valid = match user_store.validate_credentials(email.clone(), password.clone()).await {
         Ok(valid) => valid,
-        _ => return (jar, Err(AuthAPIErrors::WrongEmailOrPassword)),
+        _ => return (jar, Err(AuthAPIError::WrongEmailOrPassword)),
     };
 
     if !is_valid {
-        return (jar, Err(AuthAPIErrors::WrongEmailOrPassword));
+        return (jar, Err(AuthAPIError::WrongEmailOrPassword));
     }
 
     match user.requires_2fa {
@@ -64,7 +64,7 @@ pub async fn login(
 }
 
 
-async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (CookieJar,Result<LoginResponse, AuthAPIErrors>) {
+async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (CookieJar,Result<LoginResponse, AuthAPIError>) {
 
     let login_attempt_id = LoginAttemptId::default();
     let two_fa_code = TwoFACode::default();
@@ -76,7 +76,7 @@ async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (C
             two_fa_code.clone()
         ).await {
         Ok(_) => (),
-        Err(_) => return (jar, Err(AuthAPIErrors::InternalServerError)),
+        Err(_) => return (jar, Err(AuthAPIError::InternalServerError)),
     };
 
 
@@ -90,7 +90,7 @@ async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (C
         )
         .await {
         Ok(_) => (),
-        Err(_) => return (jar, Err(AuthAPIErrors::InternalServerError)),
+        Err(_) => return (jar, Err(AuthAPIError::InternalServerError)),
     };
 
 
@@ -103,7 +103,7 @@ async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (C
     (jar, Ok(response))
 }
 
-async fn handle_standard_login(email: &Email, jar: CookieJar) ->  (CookieJar,Result<LoginResponse, AuthAPIErrors>){
+async fn handle_standard_login(email: &Email, jar: CookieJar) ->  (CookieJar,Result<LoginResponse, AuthAPIError>){
     let auth_cookie =  generate_auth_cookie(&email);
 
     match auth_cookie {
@@ -116,7 +116,7 @@ async fn handle_standard_login(email: &Email, jar: CookieJar) ->  (CookieJar,Res
             );
             (updated_jar, Ok(response))
         }
-        _ => (jar, Err(AuthAPIErrors::InternalServerError)),
+        _ => (jar, Err(AuthAPIError::InternalServerError)),
     }
 }
 

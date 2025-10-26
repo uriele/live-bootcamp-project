@@ -23,20 +23,21 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
     }
 
     async fn remove_code(&mut self, email: &Email) -> Result<(), TwoFACodeStoreError> {
-        self.codes
-            .remove(email)
-            .ok_or(TwoFACodeStoreError::LoginAttemptIdNotFound)?;
-        Ok(())
+        match self.codes.remove(email) {
+            Some(_) => Ok(()),
+            None => Err(TwoFACodeStoreError::LoginAttemptIdNotFound),
+        }
     }
 
     async fn get_code(
         &self,
         email: &Email,
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError> {
-        self.codes
-            .get(email)
-            .cloned()
-            .ok_or(TwoFACodeStoreError::LoginAttemptIdNotFound)
+        match self.codes
+            .get(email){ 
+                Some((login_attempt_id, code)) => Ok((login_attempt_id.clone(), code.clone())),
+                None => Err(TwoFACodeStoreError::LoginAttemptIdNotFound)
+            }
     }
 }
 
