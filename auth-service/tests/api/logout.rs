@@ -6,7 +6,7 @@ use fake::faker::internet::en::FreeEmail;
 use crate::helpers::FakeJWT;
 
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_jwt_cookie_missing() {
     let app = TestApp::new().await;
 
@@ -25,7 +25,7 @@ async fn should_return_400_if_jwt_cookie_missing() {
     );
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_invalid_token() {
     let app = TestApp::new().await;
 
@@ -48,7 +48,7 @@ async fn should_return_401_if_invalid_token() {
 
 
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_if_valid_jwt_cookie() {
     
     // add invalid cookie, 
@@ -56,9 +56,10 @@ async fn should_return_200_if_valid_jwt_cookie() {
 
     // create a vector from many fake JWT you can also use quickcheck if it's simpler
 
+    
+    
     for _ in 0..100 {
         let fake_jwt = FakeJWT::parse(FreeEmail().fake());
-        let app = TestApp::new().await;
         app.cookie_jar.add_cookie_str(
             &format!("{}={}; HttpOnly; SameSite=Lax; Secure; Path=/", JWT_COOKIE_NAME, *fake_jwt),
             &Url::parse("http://127.0.0.1").expect("Failed to parse URL"),
@@ -75,14 +76,15 @@ async fn should_return_200_if_valid_jwt_cookie() {
         println!("Checking if token {} is banned: {}", *fake_jwt, contains_token);
         assert_eq!(contains_token,true);
     }
+    ().await
 }
 
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_logout_called_twice_in_a_row() {
+    
     for _ in 0..100 {
         let fake_jwt = FakeJWT::parse(FreeEmail().fake());
-        let app = TestApp::new().await;
         app.cookie_jar.add_cookie_str(
             &format!("{}={}; HttpOnly; SameSite=Lax; Secure; Path=/", JWT_COOKIE_NAME, *fake_jwt),
             &Url::parse("http://127.0.0.1").expect("Failed to parse URL"),
@@ -92,4 +94,5 @@ async fn should_return_400_if_logout_called_twice_in_a_row() {
         let response = app.post_logout().await;
         assert_eq!(response.status().as_u16(), 400);
     }
+    ().await
 }

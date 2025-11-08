@@ -1,3 +1,4 @@
 {
-    "clickup-kanban.auth.token": "pk_100631470_J2EQVXLOLU2VC1PMH1S2AQGFJFT8LYPM"
+    "clickup-kanban.auth.token": "pk_100631470_J2EQVXLOLU2VC1PMH1S2AQGFJFT8LYPM",
+    "chatgpt.openOnStartup": true
 }

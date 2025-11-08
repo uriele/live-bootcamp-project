@@ -2,7 +2,7 @@
 use crate::helpers::{TestApp};
 use auth_service::domain::{LoginAttemptId, TwoFACode,Email};
 use fake::{Fake, faker::internet::en::FreeEmail};
-
+use test_helpers::api_test;
 fn test_login() -> String{
     LoginAttemptId::default().as_ref().to_owned()
 }
@@ -15,7 +15,7 @@ fn test_email() -> String{
     FreeEmail().fake()
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_422_if_malformed_input() {
        let two_fa_requests = [serde_json::json!({
         "email": "not-an-email",
@@ -33,18 +33,21 @@ async fn should_return_422_if_malformed_input() {
         "2FACoe": "not-a-6-digit-code"
     })];
 
+    
+        
     for two_fa_request in two_fa_requests{
-        let app = TestApp::new().await;
         let response = app.post_verify_2fa(&two_fa_request).await;
         assert_eq!(response.status(), 422);
     }
 
+    
+
 
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_invalid_input() {
-    let app = TestApp::new().await;
+    
 
     let two_fa_requests = [serde_json::json!({
         "email": "not-an-email",
@@ -67,11 +70,12 @@ async fn should_return_400_if_invalid_input() {
         assert_eq!(response.status(), 400);
     }
 
+
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_if_valid_2fa_code() {
-    let app = TestApp::new().await;
+    
     let email: String = FreeEmail().fake();
     let password: String = "P@ssword123!".to_string();
 
@@ -102,12 +106,13 @@ async fn should_return_200_if_valid_2fa_code() {
     let response = app.post_verify_2fa(&two_fa_request).await;
 
     println!("{:?}",response);
+
     assert_eq!(response.status(), 200);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_same_code_twice(){
-     let app = TestApp::new().await;
+    
     let email: String = FreeEmail().fake();
     let password: String = "P@ssword123!".to_string();
 

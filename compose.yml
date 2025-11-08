@@ -1,4 +1,5 @@
 services:
+  
   app-service:
     image: cemlab/app-service # specify name of image on Docker Hub
     restart: "always" # automatically restart container when server crashes
@@ -15,5 +16,30 @@ services:
     environment: # set up environment variables
       JWT_SECRET: ${JWT_SECRET} #
       YOUR_IP: ${YOUR_IP} # set YOUR_IP to your droplet's public IP address
+      # New!
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}"
     ports:
       - "3000:3000" # expose port 3000 so that applications outside the container can connect to it 
+    # New!
+    depends_on:
+      - db
+  # New!
+  db:
+    image: postgres:15.2-alpine
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+
+# New!
+volumes:
+  db:
+    driver: local

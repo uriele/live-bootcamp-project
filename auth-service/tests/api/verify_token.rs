@@ -1,14 +1,14 @@
 
 
 use crate::helpers::{TestApp};
-
+use test_helpers::api_test;
 use fake::Fake;
 use fake::faker::internet::en::FreeEmail;
 use crate::helpers::FakeJWT;
 
 use auth_service::utils::constants::JWT_COOKIE_NAME;
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_valid_token() {
     let app = TestApp::new().await;
 
@@ -61,7 +61,7 @@ async fn should_return_200_valid_token() {
         assert_eq!(response.status().as_u16(), 200);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_invalid_token() {
     let app = TestApp::new().await;
 
@@ -73,7 +73,7 @@ async fn should_return_401_if_invalid_token() {
 }
 
 
-#[tokio::test]
+#[api_test]
 async fn should_return_422_if_malformed_input() {
     let app = TestApp::new().await;
 
@@ -91,9 +91,9 @@ async fn should_return_422_if_malformed_input() {
 }
 
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_banned_token() {
-    let app = TestApp::new().await;
+    
 
     let fake_jwt = FakeJWT::parse(FreeEmail().fake());
 
@@ -113,5 +113,6 @@ async fn should_return_401_if_banned_token() {
     });
     let response = app.post_verify_token(&request_body).await;
     assert_eq!(response.status().as_u16(), 401);
+
 
 }

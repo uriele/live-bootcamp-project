@@ -3,11 +3,11 @@ use crate::helpers::get_random_email;
 use crate::helpers::TestApp;
 use auth_service::routes::signup::SignupResponse;
 use auth_service::ErrorResponse;
+use test_helpers::api_test;
 
-
-#[tokio::test]
+#[api_test]
 async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
+    
     let random_email = get_random_email();
 
     let test_cases = [
@@ -33,11 +33,13 @@ async fn should_return_422_if_malformed_input() {
         let response = app.post_signup(&test_case).await;
         assert_eq!(response.status().as_u16(), 422,"Failed to validate signup for: {}", test_case);
     }
+    
+
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_201_if_valid_input() {
-    let app = TestApp::new().await;
+    
     let random_email = get_random_email();
 
     
@@ -59,11 +61,13 @@ async fn should_return_201_if_valid_input() {
         .await
         .expect("Could not deserialize response body to UserBody"),
         expected_response);
+    
+
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_invalid_input() {
-    let app = TestApp::new().await;
+    
     let random_email = get_random_email();
 
     let test_cases = [
@@ -111,12 +115,14 @@ async fn should_return_400_if_invalid_input() {
             .expect("Could not deserialize response body to ErrorResponse")
             .error, "Invalid credentials".to_string());
     }
+    
+
 
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_409_if_user_already_exists() {
-    let app = TestApp::new().await;
+    
     let random_email = get_random_email();
 
     let test_case =
@@ -137,5 +143,7 @@ async fn should_return_409_if_user_already_exists() {
     assert_eq!(response2.json::<ErrorResponse>().await
         .expect("Could not deserialize response body to ErrorResponse")
         .error, "User already exists".to_string());
+
+
 }   
 

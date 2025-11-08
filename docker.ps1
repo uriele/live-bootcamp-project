@@ -17,8 +17,26 @@ Get-Content $envFile | ForEach-Object {
             $key = $parts[0].Trim()
             $value = $parts[1].Trim()
 
+            # Add the echo of the env values created
+            # The url value is composed by the previous env values so I need to interpolate it
+            if ($key -eq "DATABASE_URL") {
+                $pattern = '\$\{(\w+)\}'
+                $interpolatedValue = [regex]::Replace(
+                    $value,
+                    $pattern,
+                    { param($m)
+                        $envName = $m.Groups[1].Value
+                        [System.Environment]::GetEnvironmentVariable($envName, 'Process')
+                    }
+                )
+                [System.Environment]::SetEnvironmentVariable($key, $interpolatedValue, "Process")
+                Write-Host "Set environment variable: $key=$interpolatedValue"
+            } else {
+                
             # Export as environment variable
-            [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
+                [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
+                Write-Host "Set environment variable: $key=$value"
+            }
         }
     }
 }

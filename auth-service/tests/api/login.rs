@@ -5,14 +5,9 @@ use auth_service::domain::Email;
 use auth_service::routes::login::TwoFactorAuthResponse;
 
 use auth_service::{utils::constants::JWT_COOKIE_NAME};
-
-#[tokio::test]
+use test_helpers::api_test;
+#[api_test]
 async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
-    // Call the log-in route with valid credentials and assert that a
-    // 200 HTTP status code is returned along with a JWT cookie in the response.
-
-    let app = TestApp::new().await;
-
     let random_email = crate::helpers::get_random_email();
     let password = "password123@".to_string();
 
@@ -38,15 +33,13 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
         .cookies()
         .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
         .expect("No auth cookie found in response");
-
     assert!(!auth_cookie.value().is_empty(), "Auth cookie is empty");
 }
 
 
-#[tokio::test]
+#[api_test]
 async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
-    let app = TestApp::new().await;
-
+    
     let random_email = crate::helpers::get_random_email();
     let password = "password123@".to_string();
 
@@ -111,11 +104,11 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_invalid_input() {
     // Call the log-in route with invalid credentials and assert that a
     // 400 HTTP status code is returned along with the appropriate error message. 
-    let app = TestApp::new().await;
+    
 
     let random_email = crate::helpers::get_random_email();
     let test_cases = [
@@ -160,12 +153,14 @@ async fn should_return_400_if_invalid_input() {
         let response = app.post_login(&test_case).await;
         assert_eq!(response.status().as_u16(), 400,"Failed to validate login for: {}", test_case);
     }
+    
+
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_incorrect_credentials() {
 
-    let app = TestApp::new().await;
+    
     
     let random_email = crate::helpers::get_random_email();
 
@@ -201,4 +196,6 @@ async fn should_return_401_if_incorrect_credentials() {
         let response = app.post_login(&test_case).await;
         assert_eq!(response.status().as_u16(), 401,"Failed to validate login for: {}", test_case);  
     }
+    
+
 }
