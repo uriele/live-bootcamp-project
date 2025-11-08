@@ -2,6 +2,7 @@ mod hashmap_user_store;
 mod hashset_bannedtoken_store;
 mod hashmap_two_fa_code_store;
 mod mock_email_client;
+pub mod data_stores;
 pub use hashmap_user_store::*;
 pub use hashset_bannedtoken_store::*;
 pub use hashmap_two_fa_code_store::*;

@@ -1,4 +1,7 @@
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+
+#[derive(sqlx::Type)]
+#[sqlx(transparent)]
 pub struct Email(String);
 
 
@@ -9,6 +12,17 @@ impl AsRef<str> for Email {
     }
 }
 
+impl From<String> for Email {
+    fn from(s: String) -> Self {
+        Email(s)
+    }
+}
+
+impl ToString for Email {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
 
 impl Email {
     pub fn parse(address: String) -> Result<Self, String> {

@@ -1,4 +1,5 @@
 use axum::{ response::{Html}, routing::get, routing::post, serve::Serve, Router, Json};
+use sqlx::postgres::{PgPoolOptions,PgPool};
 use tower_http::services::ServeDir;
 use tokio::net::TcpListener;
 use std::error::Error;
@@ -133,4 +134,11 @@ impl Application {
 
 pub async fn hello_handler() -> Html<&'static str> {
     Html("<h1>Hello, Marco!</h1>")
+}
+
+
+pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
+    // Create a new PostgreSQL connection pool
+    println!("{}" , url);
+    PgPoolOptions::new().max_connections(5).connect(url).await
 }
