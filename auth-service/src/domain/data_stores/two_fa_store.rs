@@ -1,6 +1,6 @@
-use serde::{Serialize,Deserialize};
-use rand::prelude::*;
 use crate::domain::Email;
+use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[async_trait::async_trait]
 pub trait TwoFACodeStore {
@@ -17,14 +17,11 @@ pub trait TwoFACodeStore {
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError>;
 }
 
-
-
 #[derive(Debug, PartialEq)]
 pub enum TwoFACodeStoreError {
     LoginAttemptIdNotFound,
     UnexpectedError,
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LoginAttemptId(String);
@@ -36,7 +33,6 @@ impl LoginAttemptId {
             .map_err(|_| "Invalid UUID".into())
     }
 }
-
 
 impl Default for LoginAttemptId {
     fn default() -> Self {
@@ -50,22 +46,20 @@ impl AsRef<str> for LoginAttemptId {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TwoFACode(String);
-
 
 impl TwoFACode {
     pub fn parse(code: String) -> Result<Self, String> {
         // Ensure `code` is a valid 6-digit code
-        let reg_code= match fancy_regex::Regex::new(r"^\d{6}$"){
+        let reg_code = match fancy_regex::Regex::new(r"^\d{6}$") {
             Ok(reg) => reg,
             Err(_) => return Err("Failed to compile regex".into()),
         };
 
         match reg_code.is_match(&code) {
-            Ok(true) =>  Ok(TwoFACode(code)), 
-            _ => Err("Invalid 2FA code".into())
+            Ok(true) => Ok(TwoFACode(code)),
+            _ => Err("Invalid 2FA code".into()),
         }
     }
 }
@@ -88,7 +82,7 @@ impl AsRef<str> for TwoFACode {
 }
 
 #[cfg(test)]
-mod test{
+mod test {
     use super::*;
 
     #[test]
@@ -102,7 +96,7 @@ mod test{
         let code_str = "12345a".to_string();
         let code = TwoFACode::parse(code_str.clone());
         assert_eq!(code, Err("Invalid 2FA code".into()));
-    }   
+    }
 
     #[test]
     fn test_two_fa_code_default() {
@@ -129,6 +123,4 @@ mod test{
         let id = LoginAttemptId::default();
         assert!(uuid::Uuid::parse_str(id.as_ref()).is_ok());
     }
-
-
 }

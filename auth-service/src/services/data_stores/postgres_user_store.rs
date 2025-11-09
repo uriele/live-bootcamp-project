@@ -1,15 +1,15 @@
 use std::error::Error;
 
 use argon2::{
-    Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version, password_hash::{SaltString}
+    password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
+    PasswordVerifier, Version,
 };
 
-use sqlx::PgPool;
-use axum::response::IntoResponse;
 use crate::domain::{
     data_stores::{UserStore, UserStoreError},
     Email, Password, User,
 };
+use sqlx::PgPool;
 
 pub struct PostgresUserStore {
     pool: PgPool,
@@ -26,23 +26,19 @@ impl UserStore for PostgresUserStore {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         let email = user.email.as_ref();
 
-        let existing_user = sqlx::query!(
-            "SELECT email FROM users WHERE email = $1",
-            email
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| {
-            println!("Database error: {}", e);
-            UserStoreError::UnexpectedError
-        })?;
+        let existing_user = sqlx::query!("SELECT email FROM users WHERE email = $1", email)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| {
+                println!("Database error: {}", e);
+                UserStoreError::UnexpectedError
+            })?;
 
         if existing_user.is_some() {
             return Err(UserStoreError::UserAlreadyExists);
         }
 
-
-        let password= user.password.as_ref().to_string();
+        let password = user.password.as_ref().to_string();
         let password_hash = match compute_password_hash(password).await {
             Ok(hash) => hash,
             Err(e) => {
@@ -56,7 +52,8 @@ impl UserStore for PostgresUserStore {
             email,
             &password_hash,
             user.requires_2fa
-        ).execute(&self.pool)
+        )
+        .execute(&self.pool)
         .await
         .map_err(|e| {
             println!("Database error: {}", e);
@@ -66,7 +63,11 @@ impl UserStore for PostgresUserStore {
         Ok(())
     }
 
-    async fn validate_credentials(&self, email: Email, password: Password) -> Result<bool, UserStoreError> {
+    async fn validate_credentials(
+        &self,
+        email: Email,
+        password: Password,
+    ) -> Result<bool, UserStoreError> {
         let user = self.get_user(email).await?;
 
         verify_password_hash(
@@ -116,9 +117,9 @@ async fn verify_password_hash(
     })
     .await;
 
-    match result{
-        Ok(res)=>res,
-        Err(e) => return Err(Box::new(e))
+    match result {
+        Ok(res) => res,
+        Err(e) => return Err(Box::new(e)),
     }
 }
 
@@ -137,8 +138,8 @@ async fn compute_password_hash(password: String) -> Result<String, Box<dyn Error
     })
     .await;
 
-    match result{
-        Ok(res)=>res,
-        Err(e) => return Err(Box::new(e))
+    match result {
+        Ok(res) => res,
+        Err(e) => return Err(Box::new(e)),
     }
 }

@@ -1,12 +1,10 @@
-
-use crate::domain::{BannedTokenStore,BannedTokenStoreError};
+use crate::domain::{BannedTokenStore, BannedTokenStoreError};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use serde::{Serialize, Deserialize};
-#[derive(Default, Debug,Clone,PartialEq,Eq,Serialize,Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashsetBannedTokenStore {
-    banned_tokens: HashSet<String>
+    banned_tokens: HashSet<String>,
 }
-
 
 #[async_trait::async_trait]
 impl BannedTokenStore for HashsetBannedTokenStore {

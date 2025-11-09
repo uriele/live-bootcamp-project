@@ -15,93 +15,99 @@ lazy_static! {
     pub static ref POSTGRES_URL: String=set_db_url();
 }
 
-
-fn set_db_password() -> String{
+fn set_db_password() -> String {
     dotenv().ok();
     match std_env::var(env::POSTGRES_PASSWORD_ENV_VAR) {
-        Ok(val) => if !val.is_empty() {
-            return val;
+        Ok(val) => {
+            if !val.is_empty() {
+                return val;
+            }
         }
-        _ => ()
+        _ => (),
     }
-    return String::from("password123")
-}   
+    return String::from("password123");
+}
 
-fn set_db_port() -> String{
+fn set_db_port() -> String {
     dotenv().ok();
     match std_env::var(env::POSTGRES_PORT_ENV_VAR) {
-        Ok(val) => if !val.is_empty() {
-            return val;
+        Ok(val) => {
+            if !val.is_empty() {
+                return val;
+            }
         }
-        _ => ()
+        _ => (),
     }
-    return String::from("5432")
+    return String::from("5432");
 }
 
-fn set_db_host() -> String{
+fn set_db_host() -> String {
     dotenv().ok();
     match std_env::var(env::POSTGRES_HOST_ENV_VAR) {
-        Ok(val) => if !val.is_empty() {
-            return val;
+        Ok(val) => {
+            if !val.is_empty() {
+                return val;
+            }
         }
-        _ => ()
+        _ => (),
     }
-    return String::from("localhost")
+    return String::from("localhost");
 }
 
-
-fn set_db_user() -> String{
+fn set_db_user() -> String {
     dotenv().ok();
     match std_env::var(env::POSTGRES_USER_ENV_VAR) {
-        Ok(val) => if !val.is_empty() {
-            return val;
+        Ok(val) => {
+            if !val.is_empty() {
+                return val;
+            }
         }
-        _ => ()
+        _ => (),
     }
-    return String::from("postgres")
+    return String::from("postgres");
 }
 
-
-fn set_db_url() -> String{
+fn set_db_url() -> String {
     dotenv().ok();
     match std_env::var(env::DATABASE_URL_ENV_VAR) {
-        Ok(val) => if !val.is_empty() {
-            return val;
+        Ok(val) => {
+            if !val.is_empty() {
+                return val;
+            }
         }
-        _ => ()
+        _ => (),
     }
-    let db_url=format!("postgres://{}:{}@{}:{}",*POSTGRES_USER,*POSTGRES_PASSWORD,*POSTGRES_HOST,*POSTGRES_PORT);
-    return db_url
+    let db_url = format!(
+        "postgres://{}:{}@{}:{}",
+        *POSTGRES_USER, *POSTGRES_PASSWORD, *POSTGRES_HOST, *POSTGRES_PORT
+    );
+    return db_url;
 }
 
-
-fn set_ip() -> String{
+fn set_ip() -> String {
     dotenv().ok();
 
     match std_env::var(env::YOUR_IP_ENV_VAR) {
-        Ok(val) => if !val.is_empty() {
-            return val;
+        Ok(val) => {
+            if !val.is_empty() {
+                return val;
+            }
         }
-        _ => ()
+        _ => (),
     }
 
-    return String::from("localhost")
-
-
+    return String::from("localhost");
 }
-
 
 fn set_token() -> String {
     dotenv().ok();
-    
-    let secret = std_env::var(env::JWT_SECRET_ENV_VAR)
-        .expect("JWT_SECRET must be set");
+
+    let secret = std_env::var(env::JWT_SECRET_ENV_VAR).expect("JWT_SECRET must be set");
     if secret.is_empty() {
         panic!("JWT_SECRET cannot be empty");
     }
     secret
 }
-
 
 pub mod env {
     pub const JWT_SECRET_ENV_VAR: &str = "JWT_SECRET";
@@ -112,9 +118,7 @@ pub mod env {
     pub const POSTGRES_HOST_ENV_VAR: &str = "POSTGRES_HOST";
     pub const POSTGRES_USER_ENV_VAR: &str = "POSTGRES_USER";
     pub const DATABASE_URL_ENV_VAR: &str = "DATABASE_URL";
-
 }
-
 
 pub mod prod {
     pub const APP_ADDRESS: &str = "0.0.0.0:3000";

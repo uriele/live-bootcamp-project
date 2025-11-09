@@ -1,9 +1,12 @@
-
-use crate::domain::{User,Email,Password};
+use crate::domain::{Email, Password, User};
 #[async_trait::async_trait]
 pub trait UserStore {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>;
-    async fn validate_credentials(&self, email: Email, password: Password) -> Result<bool, UserStoreError>;
+    async fn validate_credentials(
+        &self,
+        email: Email,
+        password: Password,
+    ) -> Result<bool, UserStoreError>;
     async fn get_user(&self, email: Email) -> Result<User, UserStoreError>;
 }
 

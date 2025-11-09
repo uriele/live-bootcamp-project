@@ -1,41 +1,38 @@
-use axum::{Json};
-use serde::{Serialize, Deserialize};
-use axum::{response::IntoResponse, http::StatusCode, extract::State};
+use axum::Json;
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use serde::{Deserialize, Serialize};
 
-use crate::{app_state::AppState, domain::{AuthAPIError, Email, Password}};
+use crate::{
+    app_state::AppState,
+    domain::{AuthAPIError, Email, Password},
+};
 
-use crate::domain::data_stores::{LoginAttemptId,TwoFACode};
-use axum_extra::extract::{CookieJar};
+use crate::domain::data_stores::{LoginAttemptId, TwoFACode};
+use axum_extra::extract::CookieJar;
 
+use crate::utils::auth::generate_auth_cookie;
 
-use crate::{utils::auth::generate_auth_cookie};
-
-
-#[derive(Serialize,Deserialize,Debug,Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
 }
 
-
 pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
-) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>)
-{
+) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
     // Your login logic here
     // For example, validate credentials, generate tokens, etc.
-    let email = 
-        Email::parse(request.email);
+    let email = Email::parse(request.email);
 
     let email = match email {
         Ok(email) => email,
         _ => return (jar, Err(AuthAPIError::InvalidCredentials)),
     };
 
-    let password = 
-        Password::parse(request.password);
+    let password = Password::parse(request.password);
     let password = match password {
         Ok(password) => password,
         _ => return (jar, Err(AuthAPIError::InvalidCredentials)),
@@ -43,12 +40,15 @@ pub async fn login(
 
     // Placeholder logic for user authentication
     let user_store = state.user_store.read().await;
-    let user = match user_store.get_user(email.clone()).await{
+    let user = match user_store.get_user(email.clone()).await {
         Ok(user) => user,
         _ => return (jar, Err(AuthAPIError::WrongEmailOrPassword)),
     };
 
-    let is_valid = match user_store.validate_credentials(email.clone(), password.clone()).await {
+    let is_valid = match user_store
+        .validate_credentials(email.clone(), password.clone())
+        .await
+    {
         Ok(valid) => valid,
         _ => return (jar, Err(AuthAPIError::WrongEmailOrPassword)),
     };
@@ -63,36 +63,36 @@ pub async fn login(
     }
 }
 
-
-async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (CookieJar,Result<LoginResponse, AuthAPIError>) {
-
+async fn handle_2fa_login(
+    email: &Email,
+    state: &AppState,
+    jar: CookieJar,
+) -> (CookieJar, Result<LoginResponse, AuthAPIError>) {
     let login_attempt_id = LoginAttemptId::default();
     let two_fa_code = TwoFACode::default();
 
-    match state.two_fa_code_store.write().await
-        .add_code(
-            email.clone(),
-            login_attempt_id.clone(),
-            two_fa_code.clone()
-        ).await {
+    match state
+        .two_fa_code_store
+        .write()
+        .await
+        .add_code(email.clone(), login_attempt_id.clone(), two_fa_code.clone())
+        .await
+    {
         Ok(_) => (),
         Err(_) => return (jar, Err(AuthAPIError::InternalServerError)),
     };
-
-
 
     // TODO: send 2FA code via the email client. Return `AuthAPIError::UnexpectedError` if the operation fails.
-    match state.email_client.read()
+    match state
+        .email_client
+        .read()
         .await
-        .send_email(email, 
-        login_attempt_id.as_ref(),
-        two_fa_code.as_ref()
-        )
-        .await {
+        .send_email(email, login_attempt_id.as_ref(), two_fa_code.as_ref())
+        .await
+    {
         Ok(_) => (),
         Err(_) => return (jar, Err(AuthAPIError::InternalServerError)),
     };
-
 
     // Finally, we need to return the login attempt ID to the client
     let response = LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
@@ -103,17 +103,18 @@ async fn handle_2fa_login(email: &Email, state: &AppState, jar: CookieJar) -> (C
     (jar, Ok(response))
 }
 
-async fn handle_standard_login(email: &Email, jar: CookieJar) ->  (CookieJar,Result<LoginResponse, AuthAPIError>){
-    let auth_cookie =  generate_auth_cookie(&email);
+async fn handle_standard_login(
+    email: &Email,
+    jar: CookieJar,
+) -> (CookieJar, Result<LoginResponse, AuthAPIError>) {
+    let auth_cookie = generate_auth_cookie(&email);
 
     match auth_cookie {
         Ok(cookie) => {
             let updated_jar = jar.add(cookie);
-            let response = LoginResponse::RegularAuth(
-                RegularAuthResponse {
-                    message: format!("User {} logged in successfully", email.as_ref())
-                }
-            );
+            let response = LoginResponse::RegularAuth(RegularAuthResponse {
+                message: format!("User {} logged in successfully", email.as_ref()),
+            });
             (updated_jar, Ok(response))
         }
         _ => (jar, Err(AuthAPIError::InternalServerError)),
@@ -160,7 +161,6 @@ impl IntoResponse for TwoFactorAuthResponse {
             .unwrap()
     }
 }
-
 
 impl IntoResponse for LoginResponse {
     fn into_response(self) -> axum::response::Response {

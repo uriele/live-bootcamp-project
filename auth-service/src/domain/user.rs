@@ -8,10 +8,13 @@ pub struct User {
     // Add other fields as necessary
 }
 
-
 impl User {
     pub fn new(email: Email, password: Password, requires_2fa: bool) -> Self {
-        Self { email, password, requires_2fa }
+        Self {
+            email,
+            password,
+            requires_2fa,
+        }
     }
 
     pub fn new_with_2fa(email: Email, password: Password) -> Self {

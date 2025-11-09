@@ -10,4 +10,3 @@ pub trait EmailClient {
         content: &str,
     ) -> Result<(), String>;
 }
-

@@ -33,14 +33,12 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
         &self,
         email: &Email,
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError> {
-        match self.codes
-            .get(email){ 
-                Some((login_attempt_id, code)) => Ok((login_attempt_id.clone(), code.clone())),
-                None => Err(TwoFACodeStoreError::LoginAttemptIdNotFound)
-            }
+        match self.codes.get(email) {
+            Some((login_attempt_id, code)) => Ok((login_attempt_id.clone(), code.clone())),
+            None => Err(TwoFACodeStoreError::LoginAttemptIdNotFound),
+        }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -54,12 +52,15 @@ mod tests {
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
 
-        store.add_code(email.clone(), login_attempt_id.clone(), code.clone()).await.unwrap();
+        store
+            .add_code(email.clone(), login_attempt_id.clone(), code.clone())
+            .await
+            .unwrap();
 
         let (retrieved_login_attempt_id, retrieved_code) = store.get_code(&email).await.unwrap();
         assert_eq!(retrieved_login_attempt_id, login_attempt_id);
         assert_eq!(retrieved_code, code);
-        }
+    }
 
     #[tokio::test]
     async fn test_remove_code() {
@@ -68,9 +69,12 @@ mod tests {
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
 
-        store.add_code(email.clone(), login_attempt_id, code).await.unwrap();
+        store
+            .add_code(email.clone(), login_attempt_id, code)
+            .await
+            .unwrap();
         store.remove_code(&email).await.unwrap();
 
         assert!(store.get_code(&email).await.is_err());
-    }   
+    }
 }

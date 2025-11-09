@@ -1,10 +1,7 @@
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-
 #[derive(sqlx::Type)]
 #[sqlx(transparent)]
 pub struct Email(String);
-
-
 
 impl AsRef<str> for Email {
     fn as_ref(&self) -> &str {
@@ -34,5 +31,5 @@ impl Email {
         } else {
             Err(format!("Invalid email format: {}", address))
         }
-    }       
+    }
 }

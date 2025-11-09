@@ -1,22 +1,22 @@
-use axum::{ response::{Html}, routing::get, routing::post, serve::Serve, Router, Json};
-use sqlx::postgres::{PgPoolOptions,PgPool};
-use tower_http::services::ServeDir;
-use tokio::net::TcpListener;
+use axum::{response::Html, routing::get, routing::post, serve::Serve, Json, Router};
+use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::error::Error;
+use tokio::net::TcpListener;
+use tower_http::services::ServeDir;
 
+pub use axum::http::{Method, StatusCode};
 pub use axum::response::IntoResponse;
-pub use axum::http::{StatusCode,Method};
 
-pub mod utils;
-pub mod routes;
-pub mod domain;
-pub mod services;
 pub mod app_state;
+pub mod domain;
+pub mod routes;
+pub mod services;
+pub mod utils;
 use app_state::AppState;
-use domain::{AuthAPIError,BannedTokenStoreError,TwoFACodeStoreError};
-use serde::{Serialize, Deserialize};
+use domain::{AuthAPIError, BannedTokenStoreError, TwoFACodeStoreError};
+use serde::{Deserialize, Serialize};
 
-use tower_http::{cors::CorsLayer};
+use tower_http::cors::CorsLayer;
 
 use utils::constants::YOUR_IP;
 #[derive(Serialize, Deserialize)]
@@ -28,12 +28,16 @@ impl IntoResponse for AuthAPIError {
     fn into_response(self) -> axum::response::Response {
         let (status, error_message) = match self {
             AuthAPIError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
-            AuthAPIError::WrongEmailOrPassword => (StatusCode::UNAUTHORIZED, "Wrong email or password"),
+            AuthAPIError::WrongEmailOrPassword => {
+                (StatusCode::UNAUTHORIZED, "Wrong email or password")
+            }
             AuthAPIError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
             AuthAPIError::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
-            AuthAPIError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
+            AuthAPIError::InternalServerError => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+            }
             AuthAPIError::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
-            AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token")
+            AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
         };
 
         let body = Json(ErrorResponse {
@@ -42,12 +46,14 @@ impl IntoResponse for AuthAPIError {
 
         (status, body).into_response()
     }
-}   
+}
 
-impl IntoResponse for TwoFACodeStoreError{
-    fn into_response(self) -> axum::response::Response{
+impl IntoResponse for TwoFACodeStoreError {
+    fn into_response(self) -> axum::response::Response {
         let (status, error_message) = match self {
-            TwoFACodeStoreError::LoginAttemptIdNotFound => (StatusCode::UNAUTHORIZED, "Login attempt ID not found"),
+            TwoFACodeStoreError::LoginAttemptIdNotFound => {
+                (StatusCode::UNAUTHORIZED, "Login attempt ID not found")
+            }
             TwoFACodeStoreError::UnexpectedError => (StatusCode::BAD_REQUEST, "Unexpected Error"),
         };
 
@@ -55,14 +61,16 @@ impl IntoResponse for TwoFACodeStoreError{
             error: error_message.to_string(),
         });
 
-        (status, body).into_response()  
+        (status, body).into_response()
     }
 }
 
 impl IntoResponse for BannedTokenStoreError {
     fn into_response(self) -> axum::response::Response {
         let (status, error_message) = match self {
-            BannedTokenStoreError::UnexpectedError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
+            BannedTokenStoreError::UnexpectedError => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+            }
         };
 
         let body = Json(ErrorResponse {
@@ -73,30 +81,21 @@ impl IntoResponse for BannedTokenStoreError {
     }
 }
 
-
 pub struct Application {
-    server: Serve<Router,Router>,
+    server: Serve<Router, Router>,
     // address is exposed as a public field
     pub address: String,
 }
 
-
 impl Application {
-    pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> 
-    {
+    pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
         // Move the Router definition from `main.rs` to here.
         // Also, remove the `hello` route.
         // We don't need it at this point!
 
+        let myip = format!("http://{}:8000", *YOUR_IP);
 
-        let myip=format!("http://{}:8000",*YOUR_IP);
-
-
-        let allowed_origins = [
-            "http://localhost:8000".to_string().parse()?,
-            myip.parse()?,
-        ];
-
+        let allowed_origins = ["http://localhost:8000".to_string().parse()?, myip.parse()?];
 
         let cors = CorsLayer::new()
             // Allow GET and POST requests
@@ -104,7 +103,6 @@ impl Application {
             // Allow cookies to be included in requests
             .allow_credentials(true)
             .allow_origin(allowed_origins);
-
 
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
@@ -136,9 +134,8 @@ pub async fn hello_handler() -> Html<&'static str> {
     Html("<h1>Hello, Marco!</h1>")
 }
 
-
 pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
     // Create a new PostgreSQL connection pool
-    println!("{}" , url);
+    println!("{}", url);
     PgPoolOptions::new().max_connections(5).connect(url).await
 }

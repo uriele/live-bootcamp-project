@@ -1,48 +1,41 @@
-use serde::{Serialize, Deserialize};
-use axum::{response::IntoResponse, Json,http::StatusCode, extract::State};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use serde::{Deserialize, Serialize};
 
-use crate::{app_state::AppState, domain::{UserStoreError,AuthAPIError, User, Email, Password}};
+use crate::{
+    app_state::AppState,
+    domain::{AuthAPIError, Email, Password, User, UserStoreError},
+};
 
-#[derive(Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SignupRequest {
     pub email: String,
     pub password: String,
-    #[serde(rename(deserialize="requires2FA"))]
-    pub requires_2fa: bool
+    #[serde(rename(deserialize = "requires2FA"))]
+    pub requires_2fa: bool,
 }
 
-
-pub async fn signup(State(app_state): State<AppState>, Json(request): Json<SignupRequest>)-> impl IntoResponse 
-{
+pub async fn signup(
+    State(app_state): State<AppState>,
+    Json(request): Json<SignupRequest>,
+) -> impl IntoResponse {
     // Your signup logic here
 
-    
-    let email = 
-        Email::parse(request.email)
-            .map_err(|_| AuthAPIError::InvalidCredentials.into_response());
+    let email =
+        Email::parse(request.email).map_err(|_| AuthAPIError::InvalidCredentials.into_response());
 
     let email = match email {
         Err(e) => return e,
         Ok(email) => email,
     };
-    let password = 
-        Password::parse(request.password)
-            .map_err(|_| AuthAPIError::InvalidCredentials.into_response());
+    let password = Password::parse(request.password)
+        .map_err(|_| AuthAPIError::InvalidCredentials.into_response());
     let password = match password {
         Err(e) => return e,
         Ok(password) => password,
     };
     let requires_2fa = request.requires_2fa;
 
-
-
-
-
-    let user = User::new(
-        email.clone(),
-        password.clone(),
-        requires_2fa
-    );
+    let user = User::new(email.clone(), password.clone(), requires_2fa);
 
     let mut user_store = app_state.user_store.write().await;
 
@@ -51,26 +44,27 @@ pub async fn signup(State(app_state): State<AppState>, Json(request): Json<Signu
     match returned_code {
         Ok(_) => {
             let response = Json(SignupResponse {
-                message: format!("User {} created successfully", email.as_ref())
+                message: format!("User {} created successfully", email.as_ref()),
             });
 
             // If all checks pass, create the user (placeholder)
             // create_user(email, password, requires_2fa).await;
 
-            return (StatusCode::CREATED,response).into_response()  
-        },
+            return (StatusCode::CREATED, response).into_response();
+        }
         Err(e) => match e {
-            UserStoreError::UserAlreadyExists => return AuthAPIError::UserAlreadyExists.into_response(),
-            UserStoreError::InvalidCredentials => return AuthAPIError::InvalidCredentials.into_response(),
-            _ => return AuthAPIError::InternalServerError.into_response(),
+            UserStoreError::UserAlreadyExists => {
+                return AuthAPIError::UserAlreadyExists.into_response()
             }
+            UserStoreError::InvalidCredentials => {
+                return AuthAPIError::InvalidCredentials.into_response()
+            }
+            _ => return AuthAPIError::InternalServerError.into_response(),
+        },
     }
-
 }
 
-
-
-#[derive(Serialize,Deserialize,PartialEq,Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct SignupResponse {
     pub message: String,
 }
