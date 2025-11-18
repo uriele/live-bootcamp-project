@@ -8,8 +8,6 @@ use auth_service::utils::constants::JWT_COOKIE_NAME;
 
 #[api_test]
 async fn should_return_200_valid_token() {
-    let app = TestApp::new().await;
-
     for _ in 0..125 {
         let token = FakeJWT::parse(FreeEmail().fake());
         let request_body = serde_json::json!({
@@ -59,8 +57,6 @@ async fn should_return_200_valid_token() {
 
 #[api_test]
 async fn should_return_401_if_invalid_token() {
-    let app = TestApp::new().await;
-
     let request_body = serde_json::json!({
         "token": "this.is.an.invalid.token",
     });
@@ -70,8 +66,6 @@ async fn should_return_401_if_invalid_token() {
 
 #[api_test]
 async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
-
     let test_cases = vec![
         serde_json::json!({
             "token": true,

@@ -12,9 +12,13 @@ use auth_service::services::MockEmailClient;
 use auth_service::services::{HashmapTwoFACodeStore, HashmapUserStore, HashsetBannedTokenStore};
 use auth_service::utils::auth::generate_auth_token;
 use auth_service::utils::constants::test;
-use auth_service::utils::constants::POSTGRES_URL;
+use auth_service::utils::constants::{POSTGRES_URL, REDIS_HOST};
 use auth_service::{
-    get_postgres_pool, services::data_stores::postgres_user_store::PostgresUserStore,
+    get_postgres_pool, get_redis_client, services::data_stores::{
+        postgres_user_store::PostgresUserStore,
+        redis_banned_token_store::RedisBannedTokenStore,
+        redis_two_fa_code_store::RedisTwoFACodeStore,
+    }
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{
@@ -50,14 +54,20 @@ impl TestApp {
     pub async fn new() -> Self {
         let db_name = Uuid::new_v4().to_string();
         let pg_pool = configure_postgresql(&db_name).await;
+        let redis_connection = Arc::new(RwLock::new(configure_redis().await));
 
         let clean_up_called = false;
 
         let user_store: UserStoreType = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
         let banned_token_store: BannedTokenStoreType =
-            Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
+            Arc::new(RwLock::new(RedisBannedTokenStore::new(redis_connection.clone())));
+            
+            //Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
+
+
         let two_fa_code_store: TwoFACodeStoreType =
-            Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
+            Arc::new(RwLock::new(RedisTwoFACodeStore::new(redis_connection)));
+            //Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
         let email_client: EmailClientType = Arc::new(RwLock::new(MockEmailClient));
 
         let app_state = AppState::new(
@@ -227,6 +237,19 @@ impl Deref for FakeJWT {
         &self.0
     }
 }
+
+
+pub async fn configure_redis() -> redis::Connection {
+    // Implementation for configuring Redis connection
+    println!("Configuring Redis connection...");
+    println!("Redis host name: {}", REDIS_HOST.to_string());
+    get_redis_client(REDIS_HOST.to_owned())
+        .await
+        .expect("Failed to create Redis client")
+        .get_connection()
+        .expect("Failed to connect to Redis")
+}
+
 
 async fn configure_postgresql(db_name: &str) -> PgPool {
     let postgresql_conn_url = POSTGRES_URL.to_owned();

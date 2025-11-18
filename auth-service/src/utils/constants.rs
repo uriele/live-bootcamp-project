@@ -3,6 +3,7 @@ use lazy_static::lazy_static;
 use std::env as std_env;
 
 pub const JWT_COOKIE_NAME: &str = "jwt";
+pub const DEFAULT_REDIS_HOST: &str = "redis";
 
 lazy_static! {
     pub static ref JWT_SECRET: String = set_token();
@@ -13,6 +14,24 @@ lazy_static! {
     pub static ref POSTGRES_HOST: String=set_db_host();
     pub static ref POSTGRES_USER: String=set_db_user();
     pub static ref POSTGRES_URL: String=set_db_url();
+
+    pub static ref REDIS_HOST: String = set_redis_host();
+}
+
+
+fn set_redis_host() -> String {
+    dotenv().ok();
+
+    match std_env::var(env::REDIS_HOST_ENV_VAR) {
+        Ok(val) => {
+            if !val.is_empty() {
+                return val;
+            }
+        }
+        _ => (),
+    }
+
+    return DEFAULT_REDIS_HOST.to_string();
 }
 
 fn set_db_password() -> String {
@@ -118,6 +137,7 @@ pub mod env {
     pub const POSTGRES_HOST_ENV_VAR: &str = "POSTGRES_HOST";
     pub const POSTGRES_USER_ENV_VAR: &str = "POSTGRES_USER";
     pub const DATABASE_URL_ENV_VAR: &str = "DATABASE_URL";
+    pub const REDIS_HOST_ENV_VAR: &str = "REDIS_HOST";
 }
 
 pub mod prod {

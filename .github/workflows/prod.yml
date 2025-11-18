@@ -5,11 +5,26 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+# avoid compilation errors
+env:
+  SQLX_OFFLINE: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    services:
+      postgres:
+        image: postgres:15.2-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{secrets.POSTGRES_PASSWORD}}
+          POSTGRES_DB: postgres
+        ports: 
+          - 5432:5432
+      redis:
+        image: redis:7.0-alpine
+        ports: 
+          - 6379:6379
     steps:
       # Checkout code from the repository
     - name: Checkout code
@@ -100,7 +115,7 @@ jobs:
 
           # ensure docker compose (v2 CLI) is available; optional:
           if ! docker compose version >/dev/null 2>&1; then
-            # install compose plugin if needed (Debian/Ubuntu)
+            # install compose plugin if needed (Debian/Ubuntu)  
             apt-get update
             apt-get install -y docker-compose-plugin
           fi
@@ -108,6 +123,7 @@ jobs:
           cd ~
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
+          export POSGRES_PASSWORD=${{secrets.POSGRES_PASSWORD}}
           docker-compose down
           docker-compose pull
           docker-compose up -d

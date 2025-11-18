@@ -4,6 +4,8 @@ use std::error::Error;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 
+use redis::{Client,RedisResult};
+
 pub use axum::http::{Method, StatusCode};
 pub use axum::response::IntoResponse;
 
@@ -139,3 +141,12 @@ pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
     println!("{}", url);
     PgPoolOptions::new().max_connections(5).connect(url).await
 }
+
+pub async fn get_redis_client(redis_hostname: String) -> RedisResult<Client> {
+    
+    println!("Connecting to Redis at hostname: {}", redis_hostname.clone());
+    let redis_url = format!("redis://{}:6379", redis_hostname);
+    println!("Redis URL: {}", redis_url.clone());
+    redis::Client::open(redis_url)
+}
+

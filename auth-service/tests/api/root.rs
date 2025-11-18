@@ -1,7 +1,8 @@
 use crate::helpers::TestApp;
-#[tokio::test]
+use test_helpers::api_test;
+
+#[api_test]
 async fn root_return_auth_ui() {
-    let app = TestApp::new().await;
     let response = app.get_root().await;
     println!("root:{}", response.status());
     println!("{:#?}", response.headers());

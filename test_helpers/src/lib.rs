@@ -16,11 +16,21 @@ pub fn api_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Generate a new function that includes the setup and cleanup code
     let expanded = quote! {
-        #[api_test]
+        #[tokio::test]
         async fn #fn_name(#fn_inputs) #fn_output {
+            use futures::FutureExt;
             let mut app = TestApp::new().await;
-            #fn_body
+            let result = std::panic::AssertUnwindSafe(async {
+                #fn_body
+            })
+            .catch_unwind()
+            .await;
+
             app.clean_up().await;
+
+            if let Err(panic) = result {
+                std::panic::resume_unwind(panic);
+            }
         }
     };
 
