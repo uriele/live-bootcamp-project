@@ -1,3 +1,5 @@
+use secrecy::{self,ExposeSecret,Secret};
+
 use crate::domain::*;
 use std::collections::HashMap;
 
@@ -24,12 +26,12 @@ impl UserStore for HashmapUserStore {
         let password_regex =
             fancy_regex::Regex::new(r"^(?!.*\s)(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})").unwrap();
 
-        if !email_regex.is_match(&user.email.as_ref()).unwrap() {
+        if !email_regex.is_match(&user.email.as_ref().expose_secret()).unwrap() {
             return Err(UserStoreError::InvalidCredentials);
         }
 
         //password at least 8 letters and a number and a symbol, no spaces
-        if !password_regex.is_match(&user.password.as_ref()).unwrap() {
+        if !password_regex.is_match(&user.password.as_ref().expose_secret()).unwrap() {
             return Err(UserStoreError::InvalidCredentials);
         }
 
@@ -69,8 +71,8 @@ mod tests {
     #[tokio::test]
     async fn test_add_user() {
         let mut hash: HashmapUserStore = HashmapUserStore::new();
-        let valid_user = Email::parse("test_user@example.com".to_string()).unwrap();
-        let valid_password = Password::parse("Password123!".to_string()).unwrap();
+        let valid_user = Email::parse("test_user@example.com".to_string().into()).unwrap();
+        let valid_password = Password::parse(Secret::new("Password123!".to_string())).unwrap();
         let user = User::new_without_2fa(valid_user.clone(), valid_password.clone());
         let existing_user = user.clone();
 
@@ -84,15 +86,15 @@ mod tests {
     #[tokio::test]
     async fn test_get_user() {
         let mut hash = HashmapUserStore::new();
-        let valid_user = Email::parse("test_user@example.com".to_string()).unwrap();
-        let valid_password = Password::parse("Password123!".to_string()).unwrap();
+        let valid_user = Email::parse("test_user@example.com".to_string().into()).unwrap();
+        let valid_password = Password::parse("Password123!".to_string().into()).unwrap();
         let user = User::new_without_2fa(valid_user.clone(), valid_password.clone());
 
         hash.add_user(user.clone()).await.unwrap();
         let retrieved_user = hash.get_user(valid_user.clone()).await;
         assert_eq!(retrieved_user, Ok(user));
         let non_existent_user = hash
-            .get_user(Email::parse("non_existent_user@example.com".to_string()).unwrap())
+            .get_user(Email::parse("non_existent_user@example.com".to_string().into()).unwrap())
             .await;
         assert_eq!(non_existent_user, Err(UserStoreError::UserNotFound));
     }
@@ -100,10 +102,10 @@ mod tests {
     #[tokio::test]
     async fn test_validate_user() {
         let mut hash = HashmapUserStore::new();
-        let valid_user = Email::parse("test_user@example.com".to_string()).unwrap();
-        let valid_password = Password::parse("Password123!".to_string()).unwrap();
-        let invalid_user = Email::parse("invalid_user@example.com".to_string()).unwrap();
-        let invalid_password = Password::parse("Password321!".to_string()).unwrap();
+        let valid_user = Email::parse("test_user@example.com".to_string().into()).unwrap();
+        let valid_password = Password::parse(Secret::new("Password123!".to_string())).unwrap();
+        let invalid_user = Email::parse("invalid_user@example.com".to_string().into()).unwrap();
+        let invalid_password = Password::parse(Secret::new("Password321!".to_string())).unwrap();
         let user = User::new_without_2fa(valid_user.clone(), valid_password.clone());
 
         hash.add_user(user.clone()).await.unwrap();

@@ -8,6 +8,7 @@ use crate::{
     utils::{auth::check_for_token_validity, constants::JWT_COOKIE_NAME},
 };
 
+#[tracing::instrument(name = "Logout", skip_all)]
 pub async fn logout(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -15,7 +16,7 @@ pub async fn logout(
     // retrieve JWT cookie from CookieJar
 
     match check_for_token_validity(state, &jar).await {
-        Err(e) => (jar, Err(e)),
+        Err(e) => (jar, Err(e.into())), // UnexpectedError(e.into()))),
         Ok(_) => {
             let updated_jar = jar.remove(JWT_COOKIE_NAME);
             (updated_jar, Ok(StatusCode::OK))

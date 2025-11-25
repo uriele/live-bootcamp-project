@@ -3,7 +3,7 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::error::Error;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
-
+use secrecy::{ExposeSecret, Secret};
 use redis::{Client,RedisResult};
 
 pub use axum::http::{Method, StatusCode};
@@ -18,7 +18,9 @@ use app_state::AppState;
 use domain::{AuthAPIError, BannedTokenStoreError, TwoFACodeStoreError};
 use serde::{Deserialize, Serialize};
 
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer,
+ trace::TraceLayer};
+use utils::tracing::{make_span_with_request_id, on_request, on_response};
 
 use utils::constants::YOUR_IP;
 #[derive(Serialize, Deserialize)]
@@ -26,8 +28,24 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
+fn log_error_chain(e: &(dyn Error + 'static)) {
+    let separator =
+        "\n-----------------------------------------------------------------------------------\n";
+    let mut report = format!("{}{:?}\n", separator, e);
+    let mut current = e.source();
+    while let Some(cause) = current {
+        let str = format!("Caused by:\n\n{:?}", cause);
+        report = format!("{}\n{}", report, str);
+        current = cause.source();
+    }
+    report = format!("{}\n{}", report, separator);
+    tracing::error!("{}", report);
+}
+
+
 impl IntoResponse for AuthAPIError {
     fn into_response(self) -> axum::response::Response {
+        log_error_chain(&self);
         let (status, error_message) = match self {
             AuthAPIError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
             AuthAPIError::WrongEmailOrPassword => {
@@ -40,6 +58,9 @@ impl IntoResponse for AuthAPIError {
             }
             AuthAPIError::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
             AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
+            AuthAPIError::UnexpectedError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
+            }
         };
 
         let body = Json(ErrorResponse {
@@ -56,7 +77,7 @@ impl IntoResponse for TwoFACodeStoreError {
             TwoFACodeStoreError::LoginAttemptIdNotFound => {
                 (StatusCode::UNAUTHORIZED, "Login attempt ID not found")
             }
-            TwoFACodeStoreError::UnexpectedError => (StatusCode::BAD_REQUEST, "Unexpected Error"),
+            TwoFACodeStoreError::UnexpectedError(_) => (StatusCode::BAD_REQUEST, "Unexpected Error"),
         };
 
         let body = Json(ErrorResponse {
@@ -70,7 +91,7 @@ impl IntoResponse for TwoFACodeStoreError {
 impl IntoResponse for BannedTokenStoreError {
     fn into_response(self) -> axum::response::Response {
         let (status, error_message) = match self {
-            BannedTokenStoreError::UnexpectedError => {
+            BannedTokenStoreError::UnexpectedError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             }
         };
@@ -106,6 +127,8 @@ impl Application {
             .allow_credentials(true)
             .allow_origin(allowed_origins);
 
+
+        
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
             .route("/hello", get(hello_handler))
@@ -115,7 +138,17 @@ impl Application {
             .route("/verify-2fa", post(routes::verify_2fa))
             .route("/verify-token", post(routes::verify_token))
             .with_state(app_state)
-            .layer(cors); // Add CORS config to our Axum router
+            .layer(cors)
+            .layer( // New!
+                // Add a TraceLayer for HTTP requests to enable detailed tracing
+                // This layer will create spans for each request using the make_span_with_request_id function,
+                // and log events at the start and end of each request using on_request and on_response functions.
+                TraceLayer::new_for_http()
+                    .make_span_with(make_span_with_request_id)
+                    .on_request(on_request)
+                    .on_response(on_response),
+            );
+             // Add CORS config to our Axum router
 
         let listener = TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
@@ -127,7 +160,7 @@ impl Application {
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
-        println!("listening on {}", &self.address);
+        tracing::info!("listening on {}", &self.address);
         self.server.await
     }
 }
@@ -136,10 +169,10 @@ pub async fn hello_handler() -> Html<&'static str> {
     Html("<h1>Hello, Marco!</h1>")
 }
 
-pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
+pub async fn get_postgres_pool(url: &Secret<String>) -> Result<PgPool, sqlx::Error> {
     // Create a new PostgreSQL connection pool
-    println!("{}", url);
-    PgPoolOptions::new().max_connections(5).connect(url).await
+    println!("{:?}", url);
+    PgPoolOptions::new().max_connections(5).connect(url.expose_secret()).await
 }
 
 pub async fn get_redis_client(redis_hostname: String) -> RedisResult<Client> {

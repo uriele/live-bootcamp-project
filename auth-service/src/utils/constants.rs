@@ -1,19 +1,18 @@
 use dotenvy::dotenv;
 use lazy_static::lazy_static;
 use std::env as std_env;
-
+use secrecy::{Secret};
 pub const JWT_COOKIE_NAME: &str = "jwt";
 pub const DEFAULT_REDIS_HOST: &str = "redis";
 
 lazy_static! {
-    pub static ref JWT_SECRET: String = set_token();
+    pub static ref JWT_SECRET: Secret<String> = set_token();
     pub static ref YOUR_IP: String= set_ip();
-    //TODO: add new docker env as static ref
     pub static ref POSTGRES_PASSWORD: String=set_db_password();
     pub static ref POSTGRES_PORT: String=set_db_port();
     pub static ref POSTGRES_HOST: String=set_db_host();
     pub static ref POSTGRES_USER: String=set_db_user();
-    pub static ref POSTGRES_URL: String=set_db_url();
+    pub static ref POSTGRES_URL: Secret<String>=set_db_url();
 
     pub static ref REDIS_HOST: String = set_redis_host();
 }
@@ -86,12 +85,12 @@ fn set_db_user() -> String {
     return String::from("postgres");
 }
 
-fn set_db_url() -> String {
+fn set_db_url() -> Secret<String> {
     dotenv().ok();
     match std_env::var(env::DATABASE_URL_ENV_VAR) {
         Ok(val) => {
             if !val.is_empty() {
-                return val;
+                return Secret::new(val);
             }
         }
         _ => (),
@@ -100,7 +99,7 @@ fn set_db_url() -> String {
         "postgres://{}:{}@{}:{}",
         *POSTGRES_USER, *POSTGRES_PASSWORD, *POSTGRES_HOST, *POSTGRES_PORT
     );
-    return db_url;
+    return Secret::new(db_url);
 }
 
 fn set_ip() -> String {
@@ -118,14 +117,14 @@ fn set_ip() -> String {
     return String::from("localhost");
 }
 
-fn set_token() -> String {
+fn set_token() -> Secret<String> {
     dotenv().ok();
 
     let secret = std_env::var(env::JWT_SECRET_ENV_VAR).expect("JWT_SECRET must be set");
     if secret.is_empty() {
         panic!("JWT_SECRET cannot be empty");
     }
-    secret
+    Secret::new(secret)
 }
 
 pub mod env {

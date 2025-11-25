@@ -1,28 +1,31 @@
 use axum::Json;
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
-
+use secrecy::{ExposeSecret, Secret};
 use crate::{
     app_state::AppState,
     domain::{AuthAPIError, Email, Password},
 };
-
+use serde::ser::SerializeStruct; // brings serialize_field / end into scope
+ 
 use crate::domain::data_stores::{LoginAttemptId, TwoFACode};
 use axum_extra::extract::CookieJar;
 
 use crate::utils::auth::generate_auth_cookie;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct LoginRequest {
-    pub email: String,
-    pub password: String,
+    pub email: Secret<String>,
+    pub password: Secret<String>,
 }
 
+#[tracing::instrument(name = "Login", skip_all)]
 pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
+    
     // Your login logic here
     // For example, validate credentials, generate tokens, etc.
     let email = Email::parse(request.email);
@@ -63,6 +66,7 @@ pub async fn login(
     }
 }
 
+#[tracing::instrument(name = "Handle 2FA Login", skip_all)]
 async fn handle_2fa_login(
     email: &Email,
     state: &AppState,
@@ -79,19 +83,18 @@ async fn handle_2fa_login(
         .await
     {
         Ok(_) => (),
-        Err(_) => return (jar, Err(AuthAPIError::InternalServerError)),
+        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e.into()))),
     };
 
-    // TODO: send 2FA code via the email client. Return `AuthAPIError::UnexpectedError` if the operation fails.
     match state
         .email_client
         .read()
         .await
-        .send_email(email, login_attempt_id.as_ref(), two_fa_code.as_ref())
+        .send_email(email, login_attempt_id.as_ref().expose_secret(), two_fa_code.as_ref().expose_secret())
         .await
     {
         Ok(_) => (),
-        Err(_) => return (jar, Err(AuthAPIError::InternalServerError)),
+        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e.into()))),
     };
 
     // Finally, we need to return the login attempt ID to the client
@@ -103,6 +106,7 @@ async fn handle_2fa_login(
     (jar, Ok(response))
 }
 
+#[tracing::instrument(name = "Handle Standard Login", skip_all)]
 async fn handle_standard_login(
     email: &Email,
     jar: CookieJar,
@@ -113,11 +117,11 @@ async fn handle_standard_login(
         Ok(cookie) => {
             let updated_jar = jar.add(cookie);
             let response = LoginResponse::RegularAuth(RegularAuthResponse {
-                message: format!("User {} logged in successfully", email.as_ref()),
+                message: format!("User {} logged in successfully", email.as_ref().expose_secret()),
             });
             (updated_jar, Ok(response))
         }
-        _ => (jar, Err(AuthAPIError::InternalServerError)),
+        Err(e) => (jar, Err(AuthAPIError::UnexpectedError(e.into()))),
     }
 }
 
@@ -133,11 +137,23 @@ pub struct RegularAuthResponse {
     pub message: String,
 }
 // If a user requires 2FA, this JSON body should be returned!
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct TwoFactorAuthResponse {
     pub message: String,
     #[serde(rename = "loginAttemptId")]
-    pub login_attempt_id: String,
+    pub login_attempt_id: Secret<String>,
+}
+
+impl Serialize for TwoFactorAuthResponse {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("TwoFactorAuthResponse", 2)?;
+        state.serialize_field("message", &self.message)?;
+        state.serialize_field("loginAttemptId", &self.login_attempt_id.expose_secret())?;
+        state.end()
+    }
 }
 
 impl IntoResponse for RegularAuthResponse {

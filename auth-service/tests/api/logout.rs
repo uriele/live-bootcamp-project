@@ -1,5 +1,7 @@
 use crate::helpers::FakeJWT;
 use crate::helpers::TestApp;
+
+use auth_service::domain::Email;
 use auth_service::{utils::constants::JWT_COOKIE_NAME, ErrorResponse};
 use fake::faker::internet::en::FreeEmail;
 use fake::Fake;
@@ -44,11 +46,12 @@ async fn should_return_200_if_valid_jwt_cookie() {
     // create a vector from many fake JWT you can also use quickcheck if it's simpler
 
     for _ in 0..100 {
-        let fake_jwt = FakeJWT::parse(FreeEmail().fake());
+        let fakeemail: Email = Email::parse(FreeEmail().fake::<String>().into()).unwrap();
+        let fake_jwt = FakeJWT::parse(fakeemail.as_ref().to_owned());
         app.cookie_jar.add_cookie_str(
             &format!(
-                "{}={}; HttpOnly; SameSite=Lax; Secure; Path=/",
-                JWT_COOKIE_NAME, *fake_jwt
+                "{}={:?}; HttpOnly; SameSite=Lax; Secure; Path=/",
+                JWT_COOKIE_NAME, fake_jwt.as_ref()
             ),
             &Url::parse("http://127.0.0.1").expect("Failed to parse URL"),
         );
@@ -62,8 +65,8 @@ async fn should_return_200_if_valid_jwt_cookie() {
             .expect("Failed to check if token is banned");
 
         println!(
-            "Checking if token {} is banned: {}",
-            *fake_jwt, contains_token
+            "Checking if token {:?} is banned: {}",
+            fake_jwt.as_ref(), contains_token
         );
         assert_eq!(contains_token, true);
     }
@@ -72,11 +75,12 @@ async fn should_return_200_if_valid_jwt_cookie() {
 #[api_test]
 async fn should_return_400_if_logout_called_twice_in_a_row() {
     for _ in 0..100 {
-        let fake_jwt = FakeJWT::parse(FreeEmail().fake());
+        let fakeemail: Email = Email::parse(FreeEmail().fake::<String>().into()).unwrap();
+        let fake_jwt = FakeJWT::parse(fakeemail.as_ref().to_owned());
         app.cookie_jar.add_cookie_str(
             &format!(
-                "{}={}; HttpOnly; SameSite=Lax; Secure; Path=/",
-                JWT_COOKIE_NAME, *fake_jwt
+                "{}={:?}; HttpOnly; SameSite=Lax; Secure; Path=/",
+                JWT_COOKIE_NAME, fake_jwt.as_ref()
             ),
             &Url::parse("http://127.0.0.1").expect("Failed to parse URL"),
         );

@@ -3,7 +3,7 @@ use crate::helpers::TestApp;
 //use auth_service::ErrorResponse;
 use auth_service::domain::Email;
 use auth_service::routes::login::TwoFactorAuthResponse;
-
+use secrecy::ExposeSecret;
 use auth_service::utils::constants::JWT_COOKIE_NAME;
 use test_helpers::api_test;
 
@@ -63,7 +63,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
     let user = app.user_store.read().await;
     let user_data = user
-        .get_user(Email::parse(random_email.clone()).unwrap())
+        .get_user(Email::parse(random_email.clone().into()).unwrap())
         .await
         .unwrap();
 
@@ -84,7 +84,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
     let two_fa_code_store = app.two_fa_code_store.read().await;
     let result = two_fa_code_store
-        .get_code(&Email::parse(random_email).unwrap())
+        .get_code(&Email::parse(random_email.clone().into()).unwrap())
         .await;
 
     //println!("result: {:?}",result) ;
@@ -94,8 +94,8 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
     let (stored_login_attempt_id, _code) = result.unwrap();
 
     assert_eq!(
-        stored_login_attempt_id.as_ref(),
-        two_fa_response.login_attempt_id,
+        stored_login_attempt_id.as_ref().expose_secret(),
+        two_fa_response.login_attempt_id.expose_secret(),
         "Stored login attempt ID does not match the returned one"
     );
 }

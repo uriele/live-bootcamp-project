@@ -2,12 +2,13 @@ use crate::helpers::TestApp;
 use auth_service::domain::{Email, LoginAttemptId, TwoFACode};
 use fake::{faker::internet::en::FreeEmail, Fake};
 use test_helpers::api_test;
+use secrecy::{ ExposeSecret};
 fn test_login() -> String {
-    LoginAttemptId::default().as_ref().to_owned()
+    LoginAttemptId::default().as_ref().expose_secret().to_owned()
 }
 
 fn test_2fa() -> String {
-    TwoFACode::default().as_ref().to_owned()
+    TwoFACode::default().as_ref().expose_secret().to_owned()
 }
 
 fn test_email() -> String {
@@ -89,14 +90,14 @@ async fn should_return_200_if_valid_2fa_code() {
         .two_fa_code_store
         .read()
         .await
-        .get_code(&Email::parse(email.clone()).unwrap())
+        .get_code(&Email::parse(email.clone().into()).unwrap())
         .await
         .unwrap();
 
     let two_fa_request = serde_json::json!({
         "email": email,
-        "loginAttemptId": login_attempt_id.as_ref().to_string(),
-        "2FACode": two_fa_code.as_ref().to_string()
+        "loginAttemptId": login_attempt_id.as_ref().expose_secret(),
+        "2FACode": two_fa_code.as_ref().expose_secret()
     });
 
     let response = app.post_verify_2fa(&two_fa_request).await;
@@ -129,14 +130,14 @@ async fn should_return_401_if_same_code_twice() {
         .two_fa_code_store
         .read()
         .await
-        .get_code(&Email::parse(email.clone()).unwrap())
+        .get_code(&Email::parse(email.clone().into()).unwrap())
         .await
         .unwrap();
 
     let two_fa_request = serde_json::json!({
         "email": email,
-        "loginAttemptId": login_attempt_id.as_ref().to_string(),
-        "2FACode": two_fa_code.as_ref().to_string()
+        "loginAttemptId": login_attempt_id.as_ref().expose_secret(),
+        "2FACode": two_fa_code.as_ref().expose_secret()
     });
 
     let response = app.post_verify_2fa(&two_fa_request).await;

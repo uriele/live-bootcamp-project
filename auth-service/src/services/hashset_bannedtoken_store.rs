@@ -1,6 +1,7 @@
 use crate::domain::{BannedTokenStore, BannedTokenStoreError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use secrecy::{ExposeSecret, Secret};
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashsetBannedTokenStore {
     banned_tokens: HashSet<String>,
@@ -8,13 +9,13 @@ pub struct HashsetBannedTokenStore {
 
 #[async_trait::async_trait]
 impl BannedTokenStore for HashsetBannedTokenStore {
-    async fn ban_token(&mut self, token: String) -> Result<(), BannedTokenStoreError> {
-        self.banned_tokens.insert(token);
+    async fn ban_token(&mut self, token: Secret<String>) -> Result<(), BannedTokenStoreError> {
+        self.banned_tokens.insert(token.expose_secret().clone());
         Ok(())
     }
 
-    async fn is_token_banned(&self, token: &str) -> Result<bool, BannedTokenStoreError> {
-        Ok(self.banned_tokens.contains(token))
+    async fn is_token_banned(&self, token: &Secret<String>) -> Result<bool, BannedTokenStoreError> {
+        Ok(self.banned_tokens.contains(token.expose_secret()))
     }
 }
 #[cfg(test)]
@@ -25,7 +26,7 @@ mod tests {
         let mut store = HashsetBannedTokenStore::default();
         let token = "test_token".to_owned();
 
-        let result = store.ban_token(token.clone()).await;
+        let result = store.ban_token(token.clone().into()).await;
 
         assert!(result.is_ok());
         assert!(store.banned_tokens.contains(&token));
@@ -37,7 +38,7 @@ mod tests {
         let token = "test_token".to_owned();
         store.banned_tokens.insert(token.clone());
 
-        let result = store.is_token_banned(&token).await;
+        let result = store.is_token_banned(&token.into()).await;
 
         assert!(result.unwrap());
     }

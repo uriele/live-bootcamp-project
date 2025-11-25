@@ -3,41 +3,28 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use std::ops::Deref;
-
+use secrecy::Secret;
+#[tracing::instrument(name = "Verify Token", skip_all)]
 pub async fn verify_token(
     State(state): State<AppState>,
     Json(request): Json<VerifyTokenRequest>,
 ) -> Result<impl IntoResponse, AuthAPIError> {
-    match state
-        .banned_token_store
-        .read()
-        .await
-        .is_token_banned(&request)
-        .await
-    {
-        Ok(val) => {
-            if val {
-                return Err(AuthAPIError::InvalidToken);
-            }
-        }
-        Err(_) => return Err(AuthAPIError::InternalServerError),
-    }
-
-    match validate_token(&request).await {
+    
+    match validate_token(&request, state.banned_token_store.clone()).await {
         Err(_) => Err(AuthAPIError::InvalidToken),
         Ok(_) => Ok(StatusCode::OK),
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct VerifyTokenRequest {
-    token: String,
+    token: Secret<String>,
 }
 
 impl Deref for VerifyTokenRequest {
-    type Target = String;
+    type Target = Secret<String>;
 
     fn deref(&self) -> &Self::Target {
         &self.token

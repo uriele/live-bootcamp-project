@@ -2,6 +2,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 // Commands is a trait that provides high-level methods for Redis commands
 use redis::{Commands, Connection};
+use color_eyre::eyre::{Context};
+use secrecy::{ExposeSecret,Secret};
 
 use crate::{
     domain::data_stores::{
@@ -23,20 +25,32 @@ impl RedisBannedTokenStore {
 
 #[async_trait::async_trait]
 impl BannedTokenStore for RedisBannedTokenStore {
-    async fn ban_token(&mut self, token: String) -> Result<(), BannedTokenStoreError> {
+    #[tracing::instrument(name = "Ban token in Redis", skip(self, token))]
+    async fn ban_token(&mut self, token: Secret<String>) -> Result<(), BannedTokenStoreError> {
         let mut conn = self.connection.write().await;
         
-        let banned_token= get_key(&token); 
-        let _: () = conn.set_ex(banned_token, true, TOKEN_TTL_SECONDS as u64)
-            .map_err(|_| BannedTokenStoreError::UnexpectedError)?;
+
+        let ttl: u64 = TOKEN_TTL_SECONDS
+            .try_into()
+            .wrap_err("failed to cast TOKEN_TTL_SECONDS to u64") // New!
+            .map_err(BannedTokenStoreError::UnexpectedError)?; // Updated!
+
+
+
+        let banned_token= get_key(token.expose_secret()); // to avoid key collisions
+        let _: () = conn.set_ex(banned_token, true, ttl)
+            .wrap_err("failed to set banned token in Redis") // New!
+            .map_err(BannedTokenStoreError::UnexpectedError)?; // Updated!
         Ok(())
     }
 
-    async fn is_token_banned(&self, token: &str) -> Result<bool, BannedTokenStoreError> {
+    #[tracing::instrument(name = "Check if token is banned in Redis", skip(self, token))]
+    async fn is_token_banned(&self, token: &Secret<String>) -> Result<bool, BannedTokenStoreError> {
         let mut conn = self.connection.write().await;
-        let banned_token = get_key(token); // to avoid key collisions
+        let banned_token = get_key(token.expose_secret()); // to avoid key collisions
         let exists: bool = conn.exists(banned_token)
-            .map_err(|_| BannedTokenStoreError::UnexpectedError)?;
+            .wrap_err("failed to check if token exists in Redis") // New!
+            .map_err(BannedTokenStoreError::UnexpectedError)?; // Updated!
         Ok(exists)
     }
 }

@@ -1,5 +1,5 @@
 use std::sync::Arc;
-
+use secrecy::{ExposeSecret, Secret};
 use auth_service::Application;
 use reqwest::cookie::Jar;
 //use paste::paste;
@@ -20,7 +20,7 @@ use auth_service::{
         redis_two_fa_code_store::RedisTwoFACodeStore,
     }
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
     Connection, Executor, PgConnection, PgPool,
@@ -130,6 +130,8 @@ impl TestApp {
             .expect("Failed to execute request")
     }
 
+
+    
     pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
     where
         Body: serde::Serialize,
@@ -173,6 +175,7 @@ impl TestApp {
             .await
             .expect("Failed to execute request.")
     }
+    
 
     pub async fn clean_up(&mut self) {
         if self.clean_up_called {
@@ -221,23 +224,28 @@ impl Drop for TestApp {
 }
 
 // A fake JWT struct for testing purposes
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FakeJWT(String);
+#[derive(Debug, Clone,Deserialize)]
+pub struct FakeJWT(Secret<String>);
 
 impl FakeJWT {
-    pub fn parse(email: String) -> Self {
-        Self(generate_auth_token(&Email::parse(email).unwrap()).unwrap())
+    pub fn parse(email: Secret<String>) -> FakeJWT {
+        FakeJWT(generate_auth_token(&Email::parse(email).unwrap()).unwrap())
     }
 }
 
 impl Deref for FakeJWT {
-    type Target = String;
+    type Target = Secret<String>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
+impl AsRef<Secret<String>> for FakeJWT {
+    fn as_ref(&self) -> &Secret<String> {
+        &self.0
+    }
+}
 
 pub async fn configure_redis() -> redis::Connection {
     // Implementation for configuring Redis connection
@@ -252,7 +260,7 @@ pub async fn configure_redis() -> redis::Connection {
 
 
 async fn configure_postgresql(db_name: &str) -> PgPool {
-    let postgresql_conn_url = POSTGRES_URL.to_owned();
+    let postgresql_conn_url = POSTGRES_URL.expose_secret().to_owned();
 
     configure_database(&postgresql_conn_url, &db_name).await;
 
@@ -260,7 +268,7 @@ async fn configure_postgresql(db_name: &str) -> PgPool {
 
     println!("database_name: {}", postgresql_conn_url_with_db);
     // Create a new connection pool and return it
-    get_postgres_pool(&postgresql_conn_url_with_db)
+    get_postgres_pool(&Secret::new(postgresql_conn_url_with_db))
         .await
         .expect("Failed to create Postgres connection pool!")
 }
@@ -294,7 +302,7 @@ async fn configure_database(db_conn_string: &str, db_name: &str) {
 }
 
 async fn delete_database(db_name: &str) -> Result<(), sqlx::Error> {
-    let postgresql_conn_url: String = POSTGRES_URL.to_owned();
+    let postgresql_conn_url: String = POSTGRES_URL.expose_secret().to_owned();
 
     let connection_options = PgConnectOptions::from_str(&postgresql_conn_url)
         .expect("Failed to parse PostgreSQL connection string");

@@ -1,17 +1,19 @@
 use crate::helpers::FakeJWT;
 use crate::helpers::TestApp;
+use auth_service::{ domain::Email};
 use fake::faker::internet::en::FreeEmail;
 use fake::Fake;
+use secrecy::ExposeSecret;
 use test_helpers::api_test;
-
+use secrecy::Secret;
 use auth_service::utils::constants::JWT_COOKIE_NAME;
 
 #[api_test]
 async fn should_return_200_valid_token() {
     for _ in 0..125 {
-        let token = FakeJWT::parse(FreeEmail().fake());
+        let token = FakeJWT::parse(Secret::new(FreeEmail().fake()));
         let request_body = serde_json::json!({
-            "token": token,
+            "token": token.expose_secret(),
         });
         let response = app.post_verify_token(&request_body).await;
         assert_eq!(response.status().as_u16(), 200);
@@ -81,11 +83,13 @@ async fn should_return_422_if_malformed_input() {
 
 #[api_test]
 async fn should_return_401_if_banned_token() {
-    let fake_jwt = FakeJWT::parse(FreeEmail().fake());
+
+    let fakemail: Email = Email::parse(FreeEmail().fake::<String>().into()).unwrap();
+    let fake_jwt = FakeJWT::parse(fakemail.as_ref().to_owned());
 
     // Ban the token
     {
-        let fake_jwt = fake_jwt.to_string();
+        let fake_jwt = fake_jwt.as_ref().to_owned();
         let mut banned_token_store = app.banned_token_store.write().await;
         banned_token_store
             .ban_token(fake_jwt)
@@ -94,7 +98,7 @@ async fn should_return_401_if_banned_token() {
     }
 
     let request_body = serde_json::json!({
-        "token": fake_jwt,
+        "token": fake_jwt.expose_secret(),
     });
     let response = app.post_verify_token(&request_body).await;
     assert_eq!(response.status().as_u16(), 401);

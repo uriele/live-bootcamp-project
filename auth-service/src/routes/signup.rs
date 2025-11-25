@@ -1,36 +1,38 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
-
+use secrecy::{ExposeSecret, Secret};
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, Password, User, UserStoreError},
+    domain::{AuthAPIError, Email, Password, User},//data_stores::UserStoreError},
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct SignupRequest {
-    pub email: String,
-    pub password: String,
+    pub email: Secret<String>,
+    pub password: Secret<String>,
     #[serde(rename(deserialize = "requires2FA"))]
     pub requires_2fa: bool,
 }
 
+
+#[tracing::instrument(name = "Signup", skip_all)] // New!
 pub async fn signup(
     State(app_state): State<AppState>,
     Json(request): Json<SignupRequest>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse,AuthAPIError> {
     // Your signup logic here
 
     let email =
         Email::parse(request.email).map_err(|_| AuthAPIError::InvalidCredentials.into_response());
 
     let email = match email {
-        Err(e) => return e,
+        Err(_) => return Err(AuthAPIError::InvalidCredentials),
         Ok(email) => email,
     };
     let password = Password::parse(request.password)
         .map_err(|_| AuthAPIError::InvalidCredentials.into_response());
     let password = match password {
-        Err(e) => return e,
+        Err(_) => return Err(AuthAPIError::InvalidCredentials),
         Ok(password) => password,
     };
     let requires_2fa = request.requires_2fa;
@@ -44,23 +46,30 @@ pub async fn signup(
     match returned_code {
         Ok(_) => {
             let response = Json(SignupResponse {
-                message: format!("User {} created successfully", email.as_ref()),
+                message: format!("User {} created successfully", email.as_ref().expose_secret()),
             });
 
             // If all checks pass, create the user (placeholder)
             // create_user(email, password, requires_2fa).await;
 
-            return (StatusCode::CREATED, response).into_response();
+            return Ok((StatusCode::CREATED, response).into_response());
+        },
+
+        Err(e) => {
+             return Err(AuthAPIError::UserAlreadyExists); //UnexpectedError(e.into())); // Updated!
         }
-        Err(e) => match e {
+    
+        /*
+        Err(e) =>  match e {
             UserStoreError::UserAlreadyExists => {
-                return AuthAPIError::UserAlreadyExists.into_response()
+                return Err(AuthAPIError::UserAlreadyExists)
             }
             UserStoreError::InvalidCredentials => {
-                return AuthAPIError::InvalidCredentials.into_response()
+                return Err(AuthAPIError::InvalidCredentials)
             }
-            _ => return AuthAPIError::InternalServerError.into_response(),
+            _ => return Err(AuthAPIError::InternalServerError),
         },
+        */
     }
 }
 
