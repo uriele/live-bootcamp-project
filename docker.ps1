@@ -42,5 +42,5 @@ Get-Content $envFile | ForEach-Object {
 }
 
 # Run docker-compose with the loaded environment variables
-docker-compose build
+docker compose build
 docker-compose up
