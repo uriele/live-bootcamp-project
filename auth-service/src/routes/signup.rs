@@ -55,7 +55,7 @@ pub async fn signup(
             return Ok((StatusCode::CREATED, response).into_response());
         },
 
-        Err(e) => {
+        Err(_) => {
              return Err(AuthAPIError::UserAlreadyExists); //UnexpectedError(e.into())); // Updated!
         }
     

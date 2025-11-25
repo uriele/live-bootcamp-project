@@ -1,4 +1,4 @@
-use secrecy::{self,ExposeSecret,Secret};
+use secrecy::{self,ExposeSecret};
 
 use crate::domain::*;
 use std::collections::HashMap;
@@ -67,6 +67,7 @@ impl UserStore for HashmapUserStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use secrecy::Secret;
 
     #[tokio::test]
     async fn test_add_user() {

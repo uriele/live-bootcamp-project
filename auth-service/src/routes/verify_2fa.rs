@@ -10,8 +10,7 @@ use axum::{
     response::{IntoResponse, Json},
 };
 use axum_extra::extract::CookieJar;
-use color_eyre::eyre::eyre;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 
 use crate::utils::auth::generate_auth_cookie;
 
@@ -24,6 +23,21 @@ pub struct Verify2FARequest {
     #[serde(rename = "2FACode")]
     pub two_fa_code: Secret<String>,
 }
+
+
+impl Serialize for Verify2FARequest {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Verify2FARequest", 3)?;
+        state.serialize_field("email", &self.email.expose_secret())?;
+        state.serialize_field("loginAttemptId", &self.login_attempt_id.expose_secret())?;
+        state.serialize_field("2FACode", &self.two_fa_code.expose_secret())?;
+        state.end()
+    }
+}
+
 
 
 #[tracing::instrument(name = "Verify 2FA", skip_all)]
@@ -39,41 +53,41 @@ pub async fn verify_2fa(
     let two_fa_code = request.two_fa_code;
 
     let email = match Email::parse(email) {
-        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e.into()))),
+        Err(_e) => return (jar, Err(AuthAPIError::InvalidCredentials)), //UnexpectedError(e.into()))),
         Ok(email) => email,
     };
     let login_attempt_id = match LoginAttemptId::parse(login_attempt_id) {
-        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e.into()))),
+        Err(_e) => return (jar, Err(AuthAPIError::InvalidCredentials)), //UnexpectedError(e.into()))),
         Ok(login_attempt_id) => login_attempt_id,
     };
 
     let two_fa_code = match TwoFACode::parse(two_fa_code) {
-        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e.into()))),
+        Err(_e) => return (jar, Err(AuthAPIError::InvalidCredentials)), //UnexpectedError(e.into()))),
         Ok(two_fa_code) => two_fa_code,
     };
 
     let code_tuple = match state.two_fa_code_store.read().await.get_code(&email).await {
-        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e.into()))),
+        Err(_e) => return (jar, Err(AuthAPIError::InvalidToken)), //UnexpectedError(e.into()))),
         Ok(data) => data,
     };
 
     if (login_attempt_id, two_fa_code) != code_tuple {
-        return (jar, Err(AuthAPIError::InvalidCredentials)); //UnexpectedError(eyre!("Invalid Credential"))));
+        return (jar, Err(AuthAPIError::InvalidCredentials)); //UnexpectedError(e.into()))),
     }
 
     let auth_cookie = generate_auth_cookie(&email);
 
     match auth_cookie {
         Ok(cookie) => {
-            let updated_jar = jar.clone().add(cookie);
-            if let Err(_) = state
+            let updated_jar = jar.add(cookie);
+            if let Err(e) = state
                 .two_fa_code_store
                 .write()
                 .await
                 .remove_code(&email)
                 .await
             {
-                return (jar, Err(AuthAPIError::InvalidToken));
+                return (updated_jar, Err(AuthAPIError::UnexpectedError(e.into())));
             }
             
 

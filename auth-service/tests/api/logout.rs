@@ -1,6 +1,6 @@
 use crate::helpers::FakeJWT;
 use crate::helpers::TestApp;
-
+use secrecy::ExposeSecret;
 use auth_service::domain::Email;
 use auth_service::{utils::constants::JWT_COOKIE_NAME, ErrorResponse};
 use fake::faker::internet::en::FreeEmail;
@@ -51,7 +51,7 @@ async fn should_return_200_if_valid_jwt_cookie() {
         app.cookie_jar.add_cookie_str(
             &format!(
                 "{}={:?}; HttpOnly; SameSite=Lax; Secure; Path=/",
-                JWT_COOKIE_NAME, fake_jwt.as_ref()
+                JWT_COOKIE_NAME, fake_jwt.as_ref().expose_secret()
             ),
             &Url::parse("http://127.0.0.1").expect("Failed to parse URL"),
         );
@@ -80,7 +80,7 @@ async fn should_return_400_if_logout_called_twice_in_a_row() {
         app.cookie_jar.add_cookie_str(
             &format!(
                 "{}={:?}; HttpOnly; SameSite=Lax; Secure; Path=/",
-                JWT_COOKIE_NAME, fake_jwt.as_ref()
+                JWT_COOKIE_NAME, fake_jwt.as_ref().expose_secret()
             ),
             &Url::parse("http://127.0.0.1").expect("Failed to parse URL"),
         );
